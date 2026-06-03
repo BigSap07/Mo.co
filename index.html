@@ -90,6 +90,17 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
 .fi .kt{font-size:9px;font-weight:700;text-transform:uppercase;padding:3px 6px;border-radius:5px;letter-spacing:.04em}
 .fi .dr{margin-left:auto;font-family:var(--m);font-size:10.5px;color:var(--dim2);text-align:right}
 .foot{font-size:10.5px;color:var(--dim2);line-height:1.65;margin-top:18px;text-align:center}
+.callout{border:1px solid #2a3445;border-left:3px solid var(--cyan);background:#0b1019;border-radius:9px;padding:10px 12px;color:#aeb9c9}
+.callout b{color:var(--cyan2)}
+.conf{margin-top:13px}
+.confpill{display:inline-block;font-family:var(--m);font-size:11px;font-weight:700;letter-spacing:.02em;padding:6px 11px;border-radius:8px}
+.board{display:flex;flex-direction:column;gap:7px}
+.lb{display:flex;align-items:center;gap:11px;background:#0b1019;border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+.lb .rk{font-family:var(--m);font-weight:800;font-size:13px;color:var(--cyan);min-width:20px;text-align:center}
+.lb .lh{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb .lk{margin-left:auto;font-family:var(--m);font-size:12px;font-weight:700}
+.lb .ld{font-family:var(--m);font-size:11px;color:var(--dim2);min-width:62px;text-align:right}
+.card.dim{opacity:.5;transition:opacity .3s}
 @media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}}
 </style>
 
@@ -112,9 +123,10 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
     <div class="card">
       <div class="h3">Who &amp; what</div>
       <label>Your handle</label>
-      <input id="handle" placeholder="e.g. Bigsap" maxlength="24" style="margin-bottom:14px">
+      <input id="handle" placeholder="e.g. Matthias" maxlength="24" style="margin-bottom:14px">
       <label>Kill type (the boss)</label>
       <div class="chips" id="ktChips"></div>
+      <p class="note callout" style="margin-top:12px"><b>Bosses only.</b> Log <b>boss</b> drops — not normal monsters, and not overcharged / megacharged / chaos <b>mini-mobs</b>. The kill type above describes the boss itself, not regular elites.</p>
     </div>
     <div class="card">
       <div class="h3">Drops this kill</div>
@@ -140,9 +152,11 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
         <div class="kpi"><div class="l">Avg / kill</div><div class="v" id="kA">—</div></div>
         <div class="kpi"><div class="l">Drop rate</div><div class="v c" id="kR">—</div></div>
       </div>
+      <div class="conf" id="conf"></div>
     </div>
     <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
     <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
+    <div class="card"><div class="h3">Top contributors</div><div class="board" id="board"></div></div>
     <div class="card"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
   </div>
 
@@ -174,6 +188,7 @@ const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type"
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
 try{ document.getElementById("handle").value=localStorage.getItem("moco_handle")||""; }catch(e){}
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function chipHTML(k,sel){
   const on=k[0]===sel;
@@ -243,10 +258,22 @@ function render(){
     return `<div class="core"><span class="nm"><span class="dot"></span>${c}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%"></span></span>
       <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;}).join("");
+  // confidence flag (based on the current view's sample size)
+  const MIN=30;
+  const cl = tk>=MIN ? ["#2fd07a",`Solid sample · n=${tk}`] : tk>=10 ? ["#f5a623",`Low sample · n=${tk} · aim for 30+`] : ["#ff6b47",`Very low sample · n=${tk} · not reliable yet`];
+  document.getElementById("conf").innerHTML = `<span class="confpill" style="background:${cl[0]}1f;color:${cl[0]};border:1px solid ${cl[0]}55">${cl[1]}</span>`;
+  const lowConf = tk<10;
+  document.getElementById("tiers").parentElement.classList.toggle("dim",lowConf);
+  document.getElementById("cores").parentElement.classList.toggle("dim",lowConf);
+  // leaderboard — all kills, unfiltered (total contribution)
+  const bd={}; ROWS.forEach(r=>{const h=r.handle||"anon"; (bd[h]=bd[h]||{k:0,d:0}); bd[h].k++; bd[h].d+=(Array.isArray(r.drops)?r.drops.length:0);});
+  const arr=Object.entries(bd).sort((a,b)=>b[1].k-a[1].k).slice(0,10);
+  document.getElementById("board").innerHTML = arr.map(([h,s],i)=>
+    `<div class="lb"><span class="rk">${i+1}</span><span class="lh">${esc(h)}</span><span class="lk">${s.k} kills</span><span class="ld">${s.d} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
   document.getElementById("feed").innerHTML = (ROWS.slice(0,10).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    const dr=d.length?d.map(x=>x.core).join(", "):"no drop";
-    return `<div class="fi"><span class="who">${(r.handle||"anon")}</span>
+    const dr=d.length?d.map(x=>esc(x.core)).join(", "):"no drop";
+    return `<div class="fi"><span class="who">${esc(r.handle||"anon")}</span>
       <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
       <span class="dr">${dr}</span></div>`;}).join("")) || `<div class="note">No kills logged yet.</div>`;
 }
