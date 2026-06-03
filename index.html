@@ -222,6 +222,12 @@ function buildChips(){
   document.querySelectorAll("#ktChips .chip").forEach(c=>c.onclick=()=>{logKT=c.dataset.kt;buildChips();});
   document.querySelectorAll("#filtChips .chip").forEach(c=>c.onclick=()=>{viewKT=c.dataset.kt;buildChips();render();});
 }
+const TSHORT={semi:"S",charged:"C",over:"OC",mega:"MC"};
+const TCOLOR=Object.fromEntries(TIERS.map(t=>[t[0],t[2]]));
+function dropsHTML(d){
+  if(!d||!d.length) return `<span style="color:var(--dim2)">no drop</span>`;
+  return d.map(x=>`<span style="color:${TCOLOR[x.tier]||'#8492a6'};font-weight:600">${esc((TSHORT[x.tier]||"")+" "+x.core)}</span>`).join(`<span style="color:var(--dim2)">, </span>`);
+}
 function addDrop(){
   document.getElementById("drops").insertAdjacentHTML("beforeend",
    `<div class="dl"><select class="dc">${CORES.map(c=>`<option>${c}</option>`).join("")}</select>
@@ -292,10 +298,9 @@ async function renderFeed(){
   let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
   document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    const dr=d.length?d.map(x=>esc(x.core)).join(", "):"no drop";
     return `<div class="fi"><span class="who">${esc(r.handle||"anon")}</span>
       <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
-      <span class="dr">${dr}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
+      <span class="dr">${dropsHTML(d)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
 }
 
 async function renderMe(){
@@ -312,11 +317,9 @@ async function renderMe(){
     <div class="kpi"><div class="l">Rank</div><div class="v">${m.rank?"#"+m.rank+" / "+m.contributors:"—"}</div></div></div>`;
   const bt=KT.filter(k=>byType[k[0]]).map(k=>`<div class="lb"><span class="lh" style="color:${k[2]}">${k[1]}</span><span class="lk">${byType[k[0]]} kills</span></div>`).join("");
   body.innerHTML=`<p class="note">Logged as <b>${esc(h)}</b></p>`+kpi+(bt?`<div class="board" style="margin-top:4px">${bt}</div>`:"");
-  const TL={semi:"Semi",charged:"Charged",over:"OC",mega:"MC"};
   feed.innerHTML=(m.recent||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    const dr=d.length?d.map(x=>esc((TL[x.tier]||"")+" "+x.core)).join(", "):"no drop";
-    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dr}</span></div>`;
+    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span></div>`;
   }).join("");
 }
 
