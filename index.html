@@ -331,7 +331,7 @@ async function renderBoard(){
 }
 
 async function renderFeed(){
-  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
+  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
   document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     return `<div class="fi"><span class="who">${esc(r.handle||"anon")}</span>
