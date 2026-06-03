@@ -179,10 +179,9 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
 // ===== FILL THESE =====
 const SUPABASE_URL = "https://rdckxcsrwahddnyhqlrm.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkY2t4Y3Nyd2FoZGRueWhxbHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzUzMTYsImV4cCI6MjA5NjA1MTMxNn0.PoOz4wIG2H_Hc71htjKqc9CXNVw1ILlox7Gh7-G44tU";
-const CONTACT = "Bigsap"; // optional: your Discord, e.g. "@yourname" or an invite link — shown in the footer
+const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 // ==========================
 
-// Kill types = boss charge/chaos (stored in the `difficulty` column). [value, label, color]
 const KT=[
   ["normal","Normal","#8492a6"],
   ["overcharged","Overcharged","#f5a623"],
@@ -195,12 +194,22 @@ const KTMAP=Object.fromEntries(KT.map(k=>[k[0],k]));
 const TIERS=[["semi","Semi-Charged","#4b8cf5"],["charged","Charged","#2fd07a"],["over","Overcharged","#f5a623"],["mega","Megacharged","#c887f7"]];
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
 
-let ROWS=[], logKT="megacharged", viewKT="all";
+let logKT="megacharged", viewKT="all";
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
 try{ document.getElementById("handle").value=localStorage.getItem("moco_handle")||""; }catch(e){}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+async function rpc(fn,args){
+  const r=await fetch(SUPABASE_URL+"/rest/v1/rpc/"+fn,{method:"POST",headers:H,body:JSON.stringify(args||{})});
+  if(!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+async function rest(q){
+  const r=await fetch(SUPABASE_URL+"/rest/v1/"+q,{headers:H});
+  return r.ok ? r.json() : [];
+}
 
 function chipHTML(k,sel){
   const on=k[0]===sel;
@@ -236,29 +245,24 @@ async function logKill(noDrop){
   }catch(e){ st.textContent="error — see console"; console.error(e); }
   btn.disabled=false;
 }
+
 async function load(){
-  if(!ok){render();return;}
-  try{
-    const r=await fetch(SUPABASE_URL+"/rest/v1/logs?select=handle,difficulty,drops,created_at&order=created_at.desc&limit=100000",{headers:H});
-    const j=await r.json(); ROWS=Array.isArray(j)?j:[];
-  }catch(e){ console.error(e); }
-  document.getElementById("liveN").textContent=ROWS.length.toLocaleString();
-  render();
+  if(!ok) return;
+  try{ const all=await rpc("get_stats",{p_kt:"all"}); document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
+  render(); renderBoard(); renderFeed(); renderMe();
 }
-function render(){
-  const rows=ROWS.filter(r=>viewKT==="all"||r.difficulty===viewKT);
+
+async function render(){
+  let s; try{ s=await rpc("get_stats",{p_kt:viewKT}); }catch(e){ console.error(e); return; }
+  const tk=s.kills||0, td=s.drops||0, wd=s.with_drops||0, tiers=s.tiers||{}, cores=s.cores||{};
   document.getElementById("cmpNote").textContent = viewKT==="all"
     ? "Showing ALL kill types pooled — these rates are NOT meaningful (a megacharged kill drops far more than a normal one). Pick a single type for real numbers."
     : `Rates below are for ${KTMAP[viewKT][1]} kills only — the only way they stay comparable.`;
-  const tk=rows.length; let td=0,wd=0; const tiers={semi:0,charged:0,over:0,mega:0},cores={};
-  CORES.forEach(c=>cores[c]=0);
-  rows.forEach(r=>{const d=Array.isArray(r.drops)?r.drops:[];td+=d.length;if(d.length)wd++;
-    d.forEach(x=>{if(x&&x.tier!=null)tiers[x.tier]=(tiers[x.tier]||0)+1;if(x&&x.core!=null)cores[x.core]=(cores[x.core]||0)+1;});});
   document.getElementById("kK").textContent=tk.toLocaleString();
   document.getElementById("kD").textContent=td.toLocaleString();
   document.getElementById("kA").textContent=(tk?td/tk:0).toFixed(2);
   document.getElementById("kR").textContent=(tk?100*wd/tk:0).toFixed(1)+"%";
-  const maxT=Math.max(...TIERS.map(t=>tiers[t[0]]),1);
+  const maxT=Math.max(...TIERS.map(t=>tiers[t[0]]||0),1);
   document.getElementById("tiers").innerHTML=TIERS.map(([k,l,c])=>{
     const v=tiers[k]||0,pc=td?100*v/td:0,ox=v?Math.round(tk/v):0;
     return `<div class="tier"><span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l}</span>
@@ -270,51 +274,52 @@ function render(){
     return `<div class="core"><span class="nm"><span class="dot"></span>${c}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%"></span></span>
       <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;}).join("");
-  // confidence flag (based on the current view's sample size)
   const MIN=30;
   const cl = tk>=MIN ? ["#2fd07a",`Solid sample · n=${tk}`] : tk>=10 ? ["#f5a623",`Low sample · n=${tk} · aim for 30+`] : ["#ff6b47",`Very low sample · n=${tk} · not reliable yet`];
   document.getElementById("conf").innerHTML = `<span class="confpill" style="background:${cl[0]}1f;color:${cl[0]};border:1px solid ${cl[0]}55">${cl[1]}</span>`;
-  const lowConf = tk<10;
+  const lowConf=tk<10;
   document.getElementById("tiers").parentElement.classList.toggle("dim",lowConf);
   document.getElementById("cores").parentElement.classList.toggle("dim",lowConf);
-  // leaderboard — all kills, unfiltered (total contribution)
-  const bd={}; ROWS.forEach(r=>{const h=r.handle||"anon"; (bd[h]=bd[h]||{k:0,d:0}); bd[h].k++; bd[h].d+=(Array.isArray(r.drops)?r.drops.length:0);});
-  const arr=Object.entries(bd).sort((a,b)=>b[1].k-a[1].k).slice(0,10);
-  document.getElementById("board").innerHTML = arr.map(([h,s],i)=>
-    `<div class="lb"><span class="rk">${i+1}</span><span class="lh">${esc(h)}</span><span class="lk">${s.k} kills</span><span class="ld">${s.d} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
-  document.getElementById("feed").innerHTML = (ROWS.slice(0,10).map(r=>{
+}
+
+async function renderBoard(){
+  let arr=[]; try{ arr=await rpc("get_leaderboard",{lim:20}); }catch(e){ console.error(e); }
+  document.getElementById("board").innerHTML = (arr||[]).map((s,i)=>
+    `<div class="lb"><span class="rk">${i+1}</span><span class="lh">${esc(s.handle||"anon")}</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
+}
+
+async function renderFeed(){
+  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
+  document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     const dr=d.length?d.map(x=>esc(x.core)).join(", "):"no drop";
     return `<div class="fi"><span class="who">${esc(r.handle||"anon")}</span>
       <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
-      <span class="dr">${dr}</span></div>`;}).join("")) || `<div class="note">No kills logged yet.</div>`;
-  renderMe();
+      <span class="dr">${dr}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
 }
-function renderMe(){
+
+async function renderMe(){
   const h=(document.getElementById("handle").value||"").trim();
   const body=document.getElementById("meBody"), feed=document.getElementById("meFeed");
   if(!h){ body.innerHTML=`<div class="note">Enter your handle on the <b>Log kill</b> tab, then come back here to see everything you've added.</div>`; feed.innerHTML=""; return; }
-  const mine=ROWS.filter(r=>(r.handle||"").trim().toLowerCase()===h.toLowerCase());
-  if(!mine.length){ body.innerHTML=`<div class="note">Nothing logged under "<b>${esc(h)}</b>" yet. Log a kill and it'll show up here.</div>`; feed.innerHTML=""; return; }
-  let td=0,wd=0; const byType={};
-  mine.forEach(r=>{const d=Array.isArray(r.drops)?r.drops:[]; td+=d.length; if(d.length)wd++; byType[r.difficulty]=(byType[r.difficulty]||0)+1;});
-  const bd={}; ROWS.forEach(r=>{const hh=(r.handle||"anon").trim().toLowerCase(); bd[hh]=(bd[hh]||0)+1;});
-  const order=Object.entries(bd).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
-  const rank=order.indexOf(h.toLowerCase());
+  let m; try{ m=await rpc("get_me",{h}); }catch(e){ console.error(e); return; }
+  if(!m || !m.kills){ body.innerHTML=`<div class="note">Nothing logged under "<b>${esc(h)}</b>" yet. Log a kill and it'll show up here.</div>`; feed.innerHTML=""; return; }
+  const byType=m.by_type||{};
   const kpi=`<div class="k4">
-    <div class="kpi"><div class="l">Your kills</div><div class="v c">${mine.length.toLocaleString()}</div></div>
-    <div class="kpi"><div class="l">Your drops</div><div class="v">${td.toLocaleString()}</div></div>
-    <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(100*wd/mine.length).toFixed(1)}%</div></div>
-    <div class="kpi"><div class="l">Rank</div><div class="v">${rank>=0?"#"+(rank+1)+" / "+order.length:"—"}</div></div></div>`;
+    <div class="kpi"><div class="l">Your kills</div><div class="v c">${(m.kills||0).toLocaleString()}</div></div>
+    <div class="kpi"><div class="l">Your drops</div><div class="v">${(m.drops||0).toLocaleString()}</div></div>
+    <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(m.kills?100*m.with_drops/m.kills:0).toFixed(1)}%</div></div>
+    <div class="kpi"><div class="l">Rank</div><div class="v">${m.rank?"#"+m.rank+" / "+m.contributors:"—"}</div></div></div>`;
   const bt=KT.filter(k=>byType[k[0]]).map(k=>`<div class="lb"><span class="lh" style="color:${k[2]}">${k[1]}</span><span class="lk">${byType[k[0]]} kills</span></div>`).join("");
   body.innerHTML=`<p class="note">Logged as <b>${esc(h)}</b></p>`+kpi+(bt?`<div class="board" style="margin-top:4px">${bt}</div>`:"");
   const TL={semi:"Semi",charged:"Charged",over:"OC",mega:"MC"};
-  feed.innerHTML=mine.slice(0,25).map(r=>{
+  feed.innerHTML=(m.recent||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     const dr=d.length?d.map(x=>esc((TL[x.tier]||"")+" "+x.core)).join(", "):"no drop";
     return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dr}</span></div>`;
   }).join("");
 }
+
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll(".panel").forEach(x=>x.classList.remove("on"));
