@@ -193,6 +193,7 @@ const KT=[
 const KTMAP=Object.fromEntries(KT.map(k=>[k[0],k]));
 const TIERS=[["semi","Semi-Charged","#4b8cf5"],["charged","Charged","#2fd07a"],["over","Overcharged","#f5a623"],["mega","Megacharged","#c887f7"]];
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
+const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
 
 let logKT="megacharged", viewKT="all";
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
@@ -276,9 +277,9 @@ async function render(){
       <span class="n">${v}</span><span class="p">${pc.toFixed(1)}%</span><span class="o">${v?"1/"+ox:"—"}</span></div>`;}).join("");
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]),maxC=Math.max(...ce.map(e=>e[1]),1);
   document.getElementById("cores").innerHTML=ce.map(([c,v])=>{
-    const rate=tk?100*v/tk:0,ox=v?Math.round(tk/v):0;
-    return `<div class="core"><span class="nm"><span class="dot"></span>${c}</span>
-      <span class="ct"><span class="cf" style="width:${100*v/maxC}%"></span></span>
+    const rate=tk?100*v/tk:0,ox=v?Math.round(tk/v):0,col=CORE_COLOR[c]||"#8b6cff";
+    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${c}</span>
+      <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
       <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;}).join("");
   const MIN=30;
   const cl = tk>=MIN ? ["#2fd07a",`Solid sample · n=${tk}`] : tk>=10 ? ["#f5a623",`Low sample · n=${tk} · aim for 30+`] : ["#ff6b47",`Very low sample · n=${tk} · not reliable yet`];
