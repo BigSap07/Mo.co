@@ -73,14 +73,14 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
 .tier{display:grid;grid-template-columns:110px 1fr 40px 46px 50px;align-items:center;gap:10px;margin-bottom:12px}
 .badge{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 7px;border-radius:6px;text-align:center}
 .trk{height:11px;background:#0b1019;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.fl{height:100%;border-radius:6px;transition:width .65s cubic-bezier(.2,.8,.2,1)}
+.fl{display:block;height:100%;border-radius:6px;transition:width .65s cubic-bezier(.2,.8,.2,1)}
 .tier .n{font-family:var(--m);font-weight:800;font-size:15px;text-align:right}
 .tier .p,.tier .o{font-family:var(--m);font-size:10.5px;color:var(--dim2);text-align:right}
 .core{display:grid;grid-template-columns:148px 1fr 38px 44px 48px;align-items:center;gap:10px;margin-bottom:9px}
 .core .nm{font-size:12.5px;display:flex;align-items:center;gap:8px}
 .core .dot{width:7px;height:7px;border-radius:50%;background:var(--violet);flex:0 0 auto}
 .core .ct{height:9px;background:#0b1019;border:1px solid var(--line);border-radius:5px;overflow:hidden}
-.core .cf{height:100%;background:linear-gradient(90deg,var(--violet),#bca6ff);border-radius:5px;transition:width .65s}
+.core .cf{display:block;height:100%;background:linear-gradient(90deg,var(--violet),#bca6ff);border-radius:5px;transition:width .65s}
 .core .cn{font-family:var(--m);font-weight:700;font-size:12.5px;text-align:right}
 .core .cr{font-family:var(--m);font-size:11.5px;color:var(--cyan);text-align:right}
 .core .cx{font-family:var(--m);font-size:10.5px;color:var(--dim);text-align:right}
@@ -101,6 +101,15 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
 .lb .lk{margin-left:auto;font-family:var(--m);font-size:12px;font-weight:700}
 .lb .ld{font-family:var(--m);font-size:11px;color:var(--dim2);min-width:62px;text-align:right}
 .card.dim{opacity:.5;transition:opacity .3s}
+.chlog{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:13px}
+.chlog .clist{display:flex;flex-direction:column;max-height:280px;overflow:auto}
+.ci{padding:9px 0;border-top:1px solid var(--line)}
+.ci:first-child{border-top:none;padding-top:0}
+.ci .cd{font-family:var(--m);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);margin-bottom:3px}
+.ci .ctx{font-size:12px;color:#aeb9c9;line-height:1.45}
+@media(min-width:1360px){
+  .chlog{position:fixed;top:18px;right:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
+}
 @media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}}
 </style>
 
@@ -169,6 +178,11 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
     <div class="card"><div class="h3">Your recent kills</div><div class="feed" id="meFeed"></div></div>
   </div>
 
+  <div class="chlog">
+    <div class="h3">Updates</div>
+    <div class="clist" id="chlog"></div>
+  </div>
+
   <div class="foot">
     <div id="contact" style="margin-bottom:9px;color:var(--dim)"></div>
     This material is unofficial and is not endorsed by Supercell.<br>
@@ -181,6 +195,18 @@ const SUPABASE_URL = "https://rdckxcsrwahddnyhqlrm.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkY2t4Y3Nyd2FoZGRueWhxbHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzUzMTYsImV4cCI6MjA5NjA1MTMxNn0.PoOz4wIG2H_Hc71htjKqc9CXNVw1ILlox7Gh7-G44tU";
 const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 // ==========================
+
+// Add a line at the TOP each time you change something. [label, what changed]
+const CHANGELOG=[
+  ["Jun 3","Changelog panel added"],
+  ["Jun 3","Drop-rate bars now colored per core"],
+  ["Jun 3","Delete your own logs (per device)"],
+  ["Jun 3","Profile tab with your recent kills"],
+  ["Jun 3","Faster stats — scales to any size"],
+  ["Jun 2","Leaderboard + confidence flags"],
+  ["Jun 2","Kill-type categories added"],
+  ["Jun 2","Launch — seeded with community logs"],
+];
 
 const KT=[
   ["normal","Normal","#8492a6"],
@@ -195,12 +221,14 @@ const TIERS=[["semi","Semi-Charged","#4b8cf5"],["charged","Charged","#2fd07a"],[
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
 const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
 
-let logKT="megacharged", viewKT="all";
+let logKT="normal", viewKT="all";
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
 try{ document.getElementById("handle").value=localStorage.getItem("moco_handle")||""; }catch(e){}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function tokens(){ try{ return JSON.parse(localStorage.getItem("moco_tokens")||"{}"); }catch(e){ return {}; } }
+function saveTokens(t){ try{ localStorage.setItem("moco_tokens",JSON.stringify(t)); }catch(e){} }
 
 async function rpc(fn,args){
   const r=await fetch(SUPABASE_URL+"/rest/v1/rpc/"+fn,{method:"POST",headers:H,body:JSON.stringify(args||{})});
@@ -210,6 +238,10 @@ async function rpc(fn,args){
 async function rest(q){
   const r=await fetch(SUPABASE_URL+"/rest/v1/"+q,{headers:H});
   return r.ok ? r.json() : [];
+}
+
+function renderLog(){
+  document.getElementById("chlog").innerHTML=CHANGELOG.map(([d,t])=>`<div class="ci"><div class="cd">${esc(d)}</div><div class="ctx">${esc(t)}</div></div>`).join("");
 }
 
 function chipHTML(k,sel){
@@ -242,10 +274,13 @@ async function logKill(noDrop){
   let drops=[];
   if(!noDrop) drops=[...document.querySelectorAll("#drops .dl")].map(d=>({core:d.querySelector(".dc").value,tier:d.querySelector(".dt").value}));
   const btn=document.getElementById("logBtn"),st=document.getElementById("status"); btn.disabled=true; st.textContent="saving…";
+  const token=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random());
   try{
-    const r=await fetch(SUPABASE_URL+"/rest/v1/logs",{method:"POST",headers:{...H,Prefer:"return=minimal"},
-      body:JSON.stringify({handle:handle||null,difficulty:logKT,drops})});
+    const r=await fetch(SUPABASE_URL+"/rest/v1/logs",{method:"POST",headers:{...H,Prefer:"return=representation"},
+      body:JSON.stringify({handle:handle||null,difficulty:logKT,drops,token})});
     if(!r.ok) throw new Error(await r.text());
+    const row=await r.json(); const id=Array.isArray(row)&&row[0]?row[0].id:null;
+    if(id!=null){ const t=tokens(); t[id]=token; saveTokens(t); }
     document.getElementById("drops").innerHTML="";
     st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1400);
     await load();
@@ -318,10 +353,22 @@ async function renderMe(){
     <div class="kpi"><div class="l">Rank</div><div class="v">${m.rank?"#"+m.rank+" / "+m.contributors:"—"}</div></div></div>`;
   const bt=KT.filter(k=>byType[k[0]]).map(k=>`<div class="lb"><span class="lh" style="color:${k[2]}">${k[1]}</span><span class="lk">${byType[k[0]]} kills</span></div>`).join("");
   body.innerHTML=`<p class="note">Logged as <b>${esc(h)}</b></p>`+kpi+(bt?`<div class="board" style="margin-top:4px">${bt}</div>`:"");
+  const tk_=tokens();
   feed.innerHTML=(m.recent||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span></div>`;
+    const del=(r.id!=null&&tk_[r.id])?`<span class="x" title="delete this log" style="margin-left:10px" onclick="deleteLog(${r.id})">×</span>`:"";
+    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span>${del}</div>`;
   }).join("");
+}
+async function deleteLog(id){
+  const t=tokens(), tok=t[id];
+  if(!tok){ alert("You can only delete logs made on this device."); return; }
+  if(!confirm("Delete this logged kill? This can't be undone.")) return;
+  try{
+    const done=await rpc("delete_log",{p_id:id,p_token:tok});
+    if(done){ delete t[id]; saveTokens(t); await load(); }
+    else alert("Couldn't delete it (already removed?).");
+  }catch(e){ console.error(e); alert("Delete failed — see console."); }
 }
 
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
@@ -331,5 +378,5 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="me") renderMe();
 });
 if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
-buildChips(); addDrop(); load();
+buildChips(); addDrop(); renderLog(); load();
 </script>
