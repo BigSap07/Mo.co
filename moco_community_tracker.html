@@ -1,95 +1,151 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<!--
-  mo.co community drop tracker — single file, no build step.
-  SETUP: run the SQL (one `logs` table), then fill the two constants below
-  and host this file anywhere (GitHub Pages, Vercel, even open locally).
--->
 <title>mo.co Drop Tracker</title>
+<!--
+  mo.co community drop tracker — single file, no build step, no SDK.
+  SETUP: 1) run the `logs` table SQL  2) fill SUPABASE_URL + SUPABASE_KEY below
+         3) host anywhere (GitHub Pages, Vercel, local).
+  NOTE: the kill type is stored in the existing `difficulty` column.
+-->
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@600;800&display=swap');
-:root{--bg:#080b12;--card:#10151f;--card2:#141b27;--line:#1d2532;--txt:#e7edf5;--dim:#7e8aa0;--dim2:#566074;
-  --cyan:#27d3ee;--semi:#4b8cf5;--charged:#2fd07a;--over:#f5a623;--mega:#c887f7;--violet:#8b6cff;--bad:#ff5a5a;
-  --d:'Chakra Petch',system-ui,sans-serif;--m:'JetBrains Mono',monospace;}
-*{box-sizing:border-box}
-body{margin:0;background:radial-gradient(800px 400px at 80% -10%,rgba(39,211,238,.07),transparent 60%),var(--bg);
-  color:var(--txt);font-family:var(--d);padding:16px;-webkit-font-smoothing:antialiased}
-.wrap{max-width:760px;margin:0 auto}
-h1{font-size:21px;margin:0;letter-spacing:.03em}h1 b{color:var(--cyan)}
-.sub{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim2);margin:3px 0 14px}
-.box{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:13px;padding:15px;margin-bottom:12px}
-.box h3{margin:0 0 12px;font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);font-weight:600;display:flex;align-items:center;gap:8px}
-.box h3::before{content:"";width:4px;height:13px;background:var(--cyan);border-radius:2px}
-.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-.kpi{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:12px;padding:12px}
-.kpi .l{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim2)}
-.kpi .v{font-family:var(--m);font-weight:800;font-size:22px;margin-top:5px}.kpi .v.c{color:var(--cyan)}
-label{font-size:11px;color:var(--dim);display:block;margin-bottom:4px}
-input,select{font-family:var(--m);background:#0c1119;color:var(--txt);border:1px solid #283142;border-radius:8px;padding:9px 10px;font-size:13px;width:100%;outline:none}
-input:focus,select:focus{border-color:var(--cyan)}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
-.row>div{flex:1;min-width:120px}
-.btn{font-family:var(--d);font-weight:600;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:9px;padding:11px 16px;cursor:pointer;font-size:13px}
-.btn.p{background:linear-gradient(180deg,#1fb6d0,#1593ab);color:#04222a}.btn.p:disabled{opacity:.5}
-.btn.g{background:#141b27;color:var(--dim);border:1px solid #283142}.btn.g:hover{color:var(--txt)}
-.btn.mini{padding:7px 11px;font-size:11px}
-.dl{display:flex;gap:8px;align-items:center;background:#0c1119;border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-bottom:7px}
-.dl .x{margin-left:auto;cursor:pointer;color:var(--dim2);font-family:var(--m);font-size:16px;padding:0 4px}.dl .x:hover{color:var(--bad)}
-.tier{display:grid;grid-template-columns:104px 1fr 38px 44px 46px;align-items:center;gap:9px;margin-bottom:11px}
-.badge{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:5px 7px;border-radius:6px;text-align:center}
-.track{height:10px;background:#0c1119;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-.fill{height:100%;border-radius:6px;transition:width .5s}
-.tier .n{font-family:var(--m);font-weight:800;font-size:14px;text-align:right}
-.tier .p,.tier .o{font-family:var(--m);font-size:10px;color:var(--dim2);text-align:right}
-.core{display:grid;grid-template-columns:140px 1fr 36px 42px 44px;align-items:center;gap:9px;margin-bottom:8px}
-.core .nm{font-size:12px}.core .ct{height:8px;background:#0c1119;border:1px solid var(--line);border-radius:5px;overflow:hidden}
-.core .cf{height:100%;background:linear-gradient(90deg,var(--violet),#b89bff);border-radius:5px}
-.core .cn{font-family:var(--m);font-weight:700;font-size:12px;text-align:right}
-.core .cr{font-family:var(--m);font-size:11px;color:var(--cyan);text-align:right}.core .cx{font-family:var(--m);font-size:10px;color:var(--dim);text-align:right}
-.foot{font-size:10.5px;color:var(--dim2);line-height:1.6;margin-top:14px;text-align:center}
-.warn{background:#2b1212;border:1px solid #5a2a2a;color:#ffb4b4;border-radius:10px;padding:12px;font-size:13px;margin-bottom:12px;display:none}
-.note{font-size:11px;color:var(--dim2);margin-top:4px}
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap');
+:root{
+  --bg:#070a10;--card:#10151f;--card2:#151c28;--line:#1c2431;--line2:#2a3445;
+  --txt:#eaf0f7;--dim:#8492a6;--dim2:#5a6678;
+  --cyan:#2fd9f5;--cyan2:#8af3ff;--violet:#8b6cff;
+  --semi:#4b8cf5;--charged:#2fd07a;--over:#f5a623;--mega:#c887f7;--bad:#ff5d5d;
+  --d:'Chakra Petch',system-ui,sans-serif;--m:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--d);padding:16px 14px 40px;
+  background:
+   radial-gradient(1000px 520px at 85% -8%,rgba(47,217,245,.10),transparent 58%),
+   radial-gradient(760px 520px at -12% 108%,rgba(139,108,255,.10),transparent 60%),
+   var(--bg);
+  -webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.022;
+  background-image:repeating-linear-gradient(0deg,#fff 0 1px,transparent 1px 3px)}
+.wrap{max-width:780px;margin:0 auto;position:relative;z-index:1}
+.hd{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+.mark{width:48px;height:48px;border-radius:13px;flex:0 0 auto;display:grid;place-items:center;
+  background:linear-gradient(150deg,#15202f,#0b1119);border:1px solid var(--line2);
+  box-shadow:0 0 22px rgba(47,217,245,.14),inset 0 0 0 1px rgba(47,217,245,.08)}
+.mark svg{width:23px;height:23px;stroke:var(--cyan)}
+.ttl{font-size:22px;font-weight:700;letter-spacing:.02em;line-height:1}
+.ttl b{color:var(--cyan)}
+.tag{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim2);margin-top:5px}
+.live{margin-left:auto;text-align:right}
+.live .n{font-family:var(--m);font-weight:800;font-size:30px;color:var(--cyan);line-height:1;text-shadow:0 0 22px rgba(47,217,245,.4)}
+.live .l{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim2);margin-top:4px}
+.warn{background:linear-gradient(180deg,#2c1414,#241010);border:1px solid #5a2a2a;color:#ffb9b9;border-radius:11px;padding:12px 14px;font-size:13px;margin-bottom:14px;display:none}
+.warn code{font-family:var(--m);color:#ffd9d9}
+.seg{display:flex;gap:5px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:5px;margin-bottom:16px}
+.seg button{flex:1;font-family:var(--d);font-weight:600;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);background:none;border:none;padding:11px;border-radius:8px;cursor:pointer;transition:.18s}
+.seg button.on{background:linear-gradient(180deg,#15364c,#0d2536);color:var(--cyan2);box-shadow:inset 0 0 0 1px rgba(47,217,245,.28)}
+.panel{display:none;animation:fade .26s ease}.panel.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:13px}
+.h3{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 0 13px;display:flex;align-items:center;gap:9px}
+.h3::before{content:"";width:4px;height:13px;background:linear-gradient(var(--cyan),var(--violet));border-radius:2px;box-shadow:0 0 9px rgba(47,217,245,.5)}
+label{font-size:10.5px;letter-spacing:.04em;color:var(--dim);display:block;margin-bottom:5px;text-transform:uppercase}
+input,select{font-family:var(--m);background:#0b1019;color:var(--txt);border:1px solid var(--line2);border-radius:9px;padding:10px 11px;font-size:13.5px;width:100%;outline:none;transition:.15s}
+input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,217,245,.12)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{font-family:var(--d);font-weight:600;font-size:12px;letter-spacing:.03em;padding:8px 12px;border-radius:9px;cursor:pointer;border:1px solid var(--line2);background:#0c121c;color:var(--dim);transition:.16s;user-select:none}
+.chip:hover{color:var(--txt)}
+.chip.on{color:#06141a;font-weight:700}
+.dl{display:flex;gap:8px;align-items:center;background:#0b1019;border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:8px}
+.dl select{flex:1}
+.dl .x{cursor:pointer;color:var(--dim2);font-family:var(--m);font-size:18px;padding:0 4px;line-height:1}.dl .x:hover{color:var(--bad)}
+.btn{font-family:var(--d);font-weight:700;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:10px;padding:12px 18px;cursor:pointer;font-size:13px;transition:.15s}
+.btn.p{background:linear-gradient(180deg,#27d3ee,#1496ad);color:#04222a;box-shadow:0 4px 18px rgba(47,217,245,.22)}
+.btn.p:hover{filter:brightness(1.08)}.btn.p:disabled{opacity:.45;box-shadow:none}
+.btn.g{background:#141b27;color:var(--dim);border:1px solid var(--line2)}.btn.g:hover{color:var(--txt);border-color:var(--cyan)}
+.btn.mini{padding:8px 12px;font-size:11px}
+.bar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:13px}
+.st{font-family:var(--m);font-size:12px;color:var(--dim)}
+.k4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.kpi{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:13px;padding:13px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--cyan),var(--violet));opacity:.55}
+.kpi .l{font-size:9px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim2)}
+.kpi .v{font-family:var(--m);font-weight:800;font-size:23px;margin-top:6px}.kpi .v.c{color:var(--cyan)}
+.note{font-size:11px;color:var(--dim2);line-height:1.55;margin:0 0 12px}
+.tier{display:grid;grid-template-columns:110px 1fr 40px 46px 50px;align-items:center;gap:10px;margin-bottom:12px}
+.badge{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:5px 7px;border-radius:6px;text-align:center}
+.trk{height:11px;background:#0b1019;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.fl{height:100%;border-radius:6px;transition:width .65s cubic-bezier(.2,.8,.2,1)}
+.tier .n{font-family:var(--m);font-weight:800;font-size:15px;text-align:right}
+.tier .p,.tier .o{font-family:var(--m);font-size:10.5px;color:var(--dim2);text-align:right}
+.core{display:grid;grid-template-columns:148px 1fr 38px 44px 48px;align-items:center;gap:10px;margin-bottom:9px}
+.core .nm{font-size:12.5px;display:flex;align-items:center;gap:8px}
+.core .dot{width:7px;height:7px;border-radius:50%;background:var(--violet);flex:0 0 auto}
+.core .ct{height:9px;background:#0b1019;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.core .cf{height:100%;background:linear-gradient(90deg,var(--violet),#bca6ff);border-radius:5px;transition:width .65s}
+.core .cn{font-family:var(--m);font-weight:700;font-size:12.5px;text-align:right}
+.core .cr{font-family:var(--m);font-size:11.5px;color:var(--cyan);text-align:right}
+.core .cx{font-family:var(--m);font-size:10.5px;color:var(--dim);text-align:right}
+.feed{display:flex;flex-direction:column;gap:7px}
+.fi{display:flex;align-items:center;gap:9px;background:#0b1019;border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:12px}
+.fi .who{font-family:var(--m);color:var(--dim);min-width:78px;max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fi .kt{font-size:9px;font-weight:700;text-transform:uppercase;padding:3px 6px;border-radius:5px;letter-spacing:.04em}
+.fi .dr{margin-left:auto;font-family:var(--m);font-size:10.5px;color:var(--dim2);text-align:right}
+.foot{font-size:10.5px;color:var(--dim2);line-height:1.65;margin-top:18px;text-align:center}
+@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}}
 </style>
 
 <div class="wrap">
-  <h1>mo.co — <b>Drop Tracker</b></h1>
-  <div class="sub">Community pooled drop rates</div>
-  <div class="warn" id="warn">⚠ Set <code>SUPABASE_URL</code> and <code>SUPABASE_KEY</code> at the top of this file, then reload.</div>
+  <div class="hd">
+    <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M5 3l7 7 7-7M5 21l7-7 7 7M12 10v4"/></svg></div>
+    <div>
+      <div class="ttl">mo.co <b>Drop Tracker</b></div>
+      <div class="tag">Community pooled drop rates</div>
+    </div>
+    <div class="live"><div class="n" id="liveN">—</div><div class="l">total kills</div></div>
+  </div>
 
-  <div class="box">
-    <h3>Log a kill</h3>
-    <div class="row" style="margin-bottom:10px">
-      <div><label>Your handle</label><input id="handle" placeholder="e.g. Matthias" maxlength="24"></div>
-      <div style="max-width:150px"><label>Difficulty</label>
-        <select id="diff"><option value="normal">Normal</option><option value="hard">Hard</option><option value="nightmare">Nightmare</option></select></div>
+  <div class="warn" id="warn">⚠ Fill <code>https://rdckxcsrwahddnyhqlrm.supabase.co</code> and <code>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkY2t4Y3Nyd2FoZGRueWhxbHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzUzMTYsImV4cCI6MjA5NjA1MTMxNn0.PoOz4wIG2H_Hc71htjKqc9CXNVw1ILlox7Gh7-G44tU</code> at the top of this file, then reload.</div>
+
+  <div class="seg">
+    <button class="on" data-p="log">Log kill</button>
+    <button data-p="stats">Stats</button>
+  </div>
+
+  <div class="panel on" id="p-log">
+    <div class="card">
+      <div class="h3">Who &amp; what</div>
+      <label>Your handle</label>
+      <input id="handle" placeholder="e.g. Matthias" maxlength="24" style="margin-bottom:14px">
+      <label>Kill type (the boss)</label>
+      <div class="chips" id="ktChips"></div>
     </div>
-    <div id="drops"></div>
-    <div class="row" style="margin-top:2px">
-      <button class="btn g mini" style="flex:0" onclick="addDrop()">+ add drop</button>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <button class="btn p" id="logBtn" style="flex:0" onclick="logKill()">Log kill</button>
-      <button class="btn g" style="flex:0" onclick="logKill(true)">+1 no-drop</button>
-      <span class="note" id="status"></span>
+    <div class="card">
+      <div class="h3">Drops this kill</div>
+      <div id="drops"></div>
+      <button class="btn g mini" onclick="addDrop()" style="margin-top:2px">+ add drop</button>
+      <div class="bar">
+        <button class="btn p" id="logBtn" onclick="logKill(false)">Log kill</button>
+        <button class="btn g" onclick="logKill(true)">+1 no-drop</button>
+        <span class="st" id="status"></span>
+      </div>
+      <p class="note" style="margin-top:13px">No drop rows = a 0-drop kill. Each row is one core that dropped, with its charge tier.</p>
     </div>
   </div>
 
-  <div class="box">
-    <h3>Pooled stats <span id="filt" style="margin-left:auto;font-weight:500"></span></h3>
-    <div class="row" style="margin:-4px 0 12px">
-      <div style="max-width:170px"><select id="viewDiff" onchange="render()">
-        <option value="all">All difficulties</option><option value="normal">Normal</option><option value="hard">Hard</option><option value="nightmare">Nightmare</option>
-      </select></div>
+  <div class="panel" id="p-stats">
+    <div class="card">
+      <div class="h3">View kill type</div>
+      <div class="chips" id="filtChips"></div>
+      <p class="note" id="cmpNote" style="margin-top:12px"></p>
+      <div class="k4">
+        <div class="kpi"><div class="l">Kills</div><div class="v c" id="kK">—</div></div>
+        <div class="kpi"><div class="l">Drops</div><div class="v" id="kD">—</div></div>
+        <div class="kpi"><div class="l">Avg / kill</div><div class="v" id="kA">—</div></div>
+        <div class="kpi"><div class="l">Drop rate</div><div class="v c" id="kR">—</div></div>
+      </div>
     </div>
-    <div class="grid4">
-      <div class="kpi"><div class="l">Kills</div><div class="v c" id="kK">—</div></div>
-      <div class="kpi"><div class="l">Drops</div><div class="v" id="kD">—</div></div>
-      <div class="kpi"><div class="l">Avg/kill</div><div class="v" id="kA">—</div></div>
-      <div class="kpi"><div class="l">Drop rate</div><div class="v c" id="kR">—</div></div>
-    </div>
-    <div id="tiers"></div>
-    <div style="height:8px"></div>
-    <div id="cores"></div>
+    <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
+    <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
+    <div class="card"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
   </div>
 
   <div class="foot">This material is unofficial and is not endorsed by Supercell.<br>
@@ -99,88 +155,107 @@ input:focus,select:focus{border-color:var(--cyan)}
 <script>
 // ===== FILL THESE TWO =====
 const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_KEY = "YOUR-ANON-KEY";
+const SUPABASE_KEY = "YOUR-ANON-OR-PUBLISHABLE-KEY";
 // ==========================
+
+// Kill types = boss charge/chaos (stored in the `difficulty` column). [value, label, color]
+const KT=[
+  ["normal","Normal","#8492a6"],
+  ["overcharged","Overcharged","#f5a623"],
+  ["megacharged","Megacharged","#c887f7"],
+  ["chaos","Chaos","#ff6b47"],
+  ["overcharged_chaos","OC Chaos","#ff9a3c"],
+  ["megacharged_chaos","MC Chaos","#e85aff"],
+];
+const KTMAP=Object.fromEntries(KT.map(k=>[k[0],k]));
 const TIERS=[["semi","Semi-Charged","#4b8cf5"],["charged","Charged","#2fd07a"],["over","Overcharged","#f5a623"],["mega","Megacharged","#c887f7"]];
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
-let ROWS=[];
 
+let ROWS=[], logKT="megacharged", viewKT="megacharged";
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
-const configured = !SUPABASE_URL.includes("YOUR-PROJECT");
-if(!configured) document.getElementById("warn").style.display="block";
+const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
+if(!ok) document.getElementById("warn").style.display="block";
+try{ document.getElementById("handle").value=localStorage.getItem("moco_handle")||""; }catch(e){}
 
-try{ document.getElementById("handle").value = localStorage.getItem("moco_handle")||""; }catch(e){}
-
+function chipHTML(k,sel){
+  const on=k[0]===sel;
+  const style=on?`background:${k[2]};border-color:${k[2]};box-shadow:0 0 14px ${k[2]}55`:`border-color:${k[2]}44;color:${k[2]}`;
+  return `<span class="chip ${on?'on':''}" data-kt="${k[0]}" style="${style}">${k[1]}</span>`;
+}
+function buildChips(){
+  document.getElementById("ktChips").innerHTML=KT.map(k=>chipHTML(k,logKT)).join("");
+  document.getElementById("filtChips").innerHTML=chipHTML(["all","All types","#2fd9f5"],viewKT)+KT.map(k=>chipHTML(k,viewKT)).join("");
+  document.querySelectorAll("#ktChips .chip").forEach(c=>c.onclick=()=>{logKT=c.dataset.kt;buildChips();});
+  document.querySelectorAll("#filtChips .chip").forEach(c=>c.onclick=()=>{viewKT=c.dataset.kt;buildChips();render();});
+}
 function addDrop(){
   document.getElementById("drops").insertAdjacentHTML("beforeend",
-   `<div class="dl"><select class="dc" style="flex:1">${CORES.map(c=>`<option>${c}</option>`).join("")}</select>
-    <select class="dt" style="flex:1">${TIERS.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join("")}</select>
+   `<div class="dl"><select class="dc">${CORES.map(c=>`<option>${c}</option>`).join("")}</select>
+    <select class="dt">${TIERS.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join("")}</select>
     <span class="x" onclick="this.parentElement.remove()">×</span></div>`);
 }
-function coreKey(name){return name;} // store display name; aggregation matches on it
-
 async function logKill(noDrop){
-  if(!configured){alert("Set your Supabase URL/key first.");return;}
+  if(!ok){alert("Set your Supabase URL + key at the top of the file first.");return;}
   const handle=document.getElementById("handle").value.trim();
   try{ localStorage.setItem("moco_handle",handle); }catch(e){}
-  const diff=document.getElementById("diff").value;
   let drops=[];
-  if(!noDrop){
-    drops=[...document.querySelectorAll("#drops .dl")].map(d=>({core:d.querySelector(".dc").value,tier:d.querySelector(".dt").value}));
-  }
-  const btn=document.getElementById("logBtn"); btn.disabled=true;
-  const st=document.getElementById("status"); st.textContent="saving…";
+  if(!noDrop) drops=[...document.querySelectorAll("#drops .dl")].map(d=>({core:d.querySelector(".dc").value,tier:d.querySelector(".dt").value}));
+  const btn=document.getElementById("logBtn"),st=document.getElementById("status"); btn.disabled=true; st.textContent="saving…";
   try{
     const r=await fetch(SUPABASE_URL+"/rest/v1/logs",{method:"POST",headers:{...H,Prefer:"return=minimal"},
-      body:JSON.stringify({handle:handle||null,difficulty:diff,drops})});
+      body:JSON.stringify({handle:handle||null,difficulty:logKT,drops})});
     if(!r.ok) throw new Error(await r.text());
     document.getElementById("drops").innerHTML="";
-    st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1500);
+    st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1400);
     await load();
-  }catch(e){ st.textContent="error — check console"; console.error(e); }
+  }catch(e){ st.textContent="error — see console"; console.error(e); }
   btn.disabled=false;
 }
-
 async function load(){
-  if(!configured){render();return;}
+  if(!ok){render();return;}
   try{
-    const r=await fetch(SUPABASE_URL+"/rest/v1/logs?select=difficulty,drops,drop_count&limit=100000",{headers:H});
-    ROWS=await r.json(); if(!Array.isArray(ROWS)) ROWS=[];
+    const r=await fetch(SUPABASE_URL+"/rest/v1/logs?select=handle,difficulty,drops,created_at&order=created_at.desc&limit=100000",{headers:H});
+    const j=await r.json(); ROWS=Array.isArray(j)?j:[];
   }catch(e){ console.error(e); }
+  document.getElementById("liveN").textContent=ROWS.length.toLocaleString();
   render();
 }
-
 function render(){
-  const vd=document.getElementById("viewDiff").value;
-  const rows=ROWS.filter(r=>vd==="all"||r.difficulty===vd);
-  document.getElementById("filt").textContent=`${rows.length} kills`;
-  const totalKills=rows.length;
-  let totalDrops=0, withDrop=0, hist={0:0,1:0,2:0,3:0,4:0};
-  const tiers={semi:0,charged:0,over:0,mega:0}, cores={};
+  const rows=ROWS.filter(r=>viewKT==="all"||r.difficulty===viewKT);
+  document.getElementById("cmpNote").textContent = viewKT==="all"
+    ? "Showing ALL kill types pooled — these rates are NOT meaningful (a megacharged kill drops far more than a normal one). Pick a single type for real numbers."
+    : `Rates below are for ${KTMAP[viewKT][1]} kills only — the only way they stay comparable.`;
+  const tk=rows.length; let td=0,wd=0; const tiers={semi:0,charged:0,over:0,mega:0},cores={};
   CORES.forEach(c=>cores[c]=0);
-  rows.forEach(r=>{
-    const d=Array.isArray(r.drops)?r.drops:[]; const n=d.length;
-    totalDrops+=n; if(n>0)withDrop++; hist[Math.min(n,4)]++;
-    d.forEach(x=>{ if(x&&x.tier!=null)tiers[x.tier]=(tiers[x.tier]||0)+1; if(x&&x.core!=null)cores[x.core]=(cores[x.core]||0)+1; });
-  });
-  document.getElementById("kK").textContent=totalKills.toLocaleString();
-  document.getElementById("kD").textContent=totalDrops.toLocaleString();
-  document.getElementById("kA").textContent=(totalKills?totalDrops/totalKills:0).toFixed(2);
-  document.getElementById("kR").textContent=(totalKills?100*withDrop/totalKills:0).toFixed(1)+"%";
+  rows.forEach(r=>{const d=Array.isArray(r.drops)?r.drops:[];td+=d.length;if(d.length)wd++;
+    d.forEach(x=>{if(x&&x.tier!=null)tiers[x.tier]=(tiers[x.tier]||0)+1;if(x&&x.core!=null)cores[x.core]=(cores[x.core]||0)+1;});});
+  document.getElementById("kK").textContent=tk.toLocaleString();
+  document.getElementById("kD").textContent=td.toLocaleString();
+  document.getElementById("kA").textContent=(tk?td/tk:0).toFixed(2);
+  document.getElementById("kR").textContent=(tk?100*wd/tk:0).toFixed(1)+"%";
   const maxT=Math.max(...TIERS.map(t=>tiers[t[0]]),1);
   document.getElementById("tiers").innerHTML=TIERS.map(([k,l,c])=>{
-    const v=tiers[k]||0, pc=totalDrops?100*v/totalDrops:0, ox=v?Math.round(totalKills/v):0;
+    const v=tiers[k]||0,pc=td?100*v/td:0,ox=v?Math.round(tk/v):0;
     return `<div class="tier"><span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l}</span>
-      <span class="track"><span class="fill" style="width:${100*v/maxT}%;background:linear-gradient(90deg,${c},${c}aa)"></span></span>
-      <span class="n">${v}</span><span class="p">${pc.toFixed(1)}%</span><span class="o">${v?"1/"+ox:"—"}</span></div>`;
-  }).join("");
-  const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]); const maxC=Math.max(...ce.map(e=>e[1]),1);
+      <span class="trk"><span class="fl" style="width:${100*v/maxT}%;background:linear-gradient(90deg,${c},${c}aa)"></span></span>
+      <span class="n">${v}</span><span class="p">${pc.toFixed(1)}%</span><span class="o">${v?"1/"+ox:"—"}</span></div>`;}).join("");
+  const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]),maxC=Math.max(...ce.map(e=>e[1]),1);
   document.getElementById("cores").innerHTML=ce.map(([c,v])=>{
-    const rate=totalKills?100*v/totalKills:0, ox=v?Math.round(totalKills/v):0;
-    return `<div class="core"><span class="nm">${c}</span>
+    const rate=tk?100*v/tk:0,ox=v?Math.round(tk/v):0;
+    return `<div class="core"><span class="nm"><span class="dot"></span>${c}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%"></span></span>
-      <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;
-  }).join("");
+      <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;}).join("");
+  document.getElementById("feed").innerHTML = (ROWS.slice(0,10).map(r=>{
+    const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
+    const dr=d.length?d.map(x=>x.core).join(", "):"no drop";
+    return `<div class="fi"><span class="who">${(r.handle||"anon")}</span>
+      <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
+      <span class="dr">${dr}</span></div>`;}).join("")) || `<div class="note">No kills logged yet.</div>`;
 }
-addDrop(); load();
+document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); document.getElementById("p-"+b.dataset.p).classList.add("on");
+});
+buildChips(); addDrop(); load();
 </script>
