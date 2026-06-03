@@ -183,7 +183,7 @@ const KTMAP=Object.fromEntries(KT.map(k=>[k[0],k]));
 const TIERS=[["semi","Semi-Charged","#4b8cf5"],["charged","Charged","#2fd07a"],["over","Overcharged","#f5a623"],["mega","Megacharged","#c887f7"]];
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
 
-let ROWS=[], logKT="megacharged", viewKT="megacharged";
+let ROWS=[], logKT="megacharged", viewKT="all";
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
