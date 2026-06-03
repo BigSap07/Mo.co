@@ -114,6 +114,8 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
     <div class="live"><div class="n" id="liveN">—</div><div class="l">total kills</div></div>
   </div>
 
+  <div class="warn" id="warn">⚠ Fill <code>SUPABASE_URL</code> and <code>SUPABASE_KEY</code> at the top of this file, then reload.</div>
+
   <div class="seg">
     <button class="on" data-p="log">Log kill</button>
     <button data-p="stats">Stats</button>
@@ -166,6 +168,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
       <div class="h3">Your contribution</div>
       <div id="meBody"></div>
     </div>
+    <div class="card"><div class="h3">Your recent kills</div><div class="feed" id="meFeed"></div></div>
   </div>
 
   <div class="foot">This material is unofficial and is not endorsed by Supercell.<br>
@@ -288,10 +291,10 @@ function render(){
 }
 function renderMe(){
   const h=(document.getElementById("handle").value||"").trim();
-  const body=document.getElementById("meBody");
-  if(!h){ body.innerHTML=`<div class="note">Enter your handle on the <b>Log kill</b> tab, then come back here to see everything you've added.</div>`; return; }
+  const body=document.getElementById("meBody"), feed=document.getElementById("meFeed");
+  if(!h){ body.innerHTML=`<div class="note">Enter your handle on the <b>Log kill</b> tab, then come back here to see everything you've added.</div>`; feed.innerHTML=""; return; }
   const mine=ROWS.filter(r=>(r.handle||"").trim().toLowerCase()===h.toLowerCase());
-  if(!mine.length){ body.innerHTML=`<div class="note">Nothing logged under "<b>${esc(h)}</b>" yet. Log a kill and it'll show up here.</div>`; return; }
+  if(!mine.length){ body.innerHTML=`<div class="note">Nothing logged under "<b>${esc(h)}</b>" yet. Log a kill and it'll show up here.</div>`; feed.innerHTML=""; return; }
   let td=0,wd=0; const byType={};
   mine.forEach(r=>{const d=Array.isArray(r.drops)?r.drops:[]; td+=d.length; if(d.length)wd++; byType[r.difficulty]=(byType[r.difficulty]||0)+1;});
   const bd={}; ROWS.forEach(r=>{const hh=(r.handle||"anon").trim().toLowerCase(); bd[hh]=(bd[hh]||0)+1;});
@@ -304,6 +307,12 @@ function renderMe(){
     <div class="kpi"><div class="l">Rank</div><div class="v">${rank>=0?"#"+(rank+1)+" / "+order.length:"—"}</div></div></div>`;
   const bt=KT.filter(k=>byType[k[0]]).map(k=>`<div class="lb"><span class="lh" style="color:${k[2]}">${k[1]}</span><span class="lk">${byType[k[0]]} kills</span></div>`).join("");
   body.innerHTML=`<p class="note">Logged as <b>${esc(h)}</b></p>`+kpi+(bt?`<div class="board" style="margin-top:4px">${bt}</div>`:"");
+  const TL={semi:"Semi",charged:"Charged",over:"OC",mega:"MC"};
+  feed.innerHTML=mine.slice(0,25).map(r=>{
+    const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
+    const dr=d.length?d.map(x=>esc((TL[x.tier]||"")+" "+x.core)).join(", "):"no drop";
+    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dr}</span></div>`;
+  }).join("");
 }
 document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
