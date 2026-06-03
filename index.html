@@ -114,8 +114,6 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
     <div class="live"><div class="n" id="liveN">—</div><div class="l">total kills</div></div>
   </div>
 
-  <div class="warn" id="warn">⚠ Fill <code>SUPABASE_URL</code> and <code>SUPABASE_KEY</code> at the top of this file, then reload.</div>
-
   <div class="seg">
     <button class="on" data-p="log">Log kill</button>
     <button data-p="stats">Stats</button>
@@ -126,7 +124,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
     <div class="card">
       <div class="h3">Who &amp; what</div>
       <label>Your handle</label>
-      <input id="handle" placeholder="e.g. Bigsap" maxlength="24" style="margin-bottom:14px">
+      <input id="handle" placeholder="e.g. bigsap" maxlength="24" style="margin-bottom:14px">
       <label>Kill type (the boss)</label>
       <div class="chips" id="ktChips"></div>
       <p class="note callout" style="margin-top:12px"><b>Bosses only.</b> Log <b>boss</b> drops — not normal monsters, and not overcharged / megacharged / chaos <b>mini-mobs</b>. The kill type above describes the boss itself, not regular elites.</p>
@@ -171,14 +169,17 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
     <div class="card"><div class="h3">Your recent kills</div><div class="feed" id="meFeed"></div></div>
   </div>
 
-  <div class="foot">This material is unofficial and is not endorsed by Supercell.<br>
-  For more information see Supercell's Fan Content Policy: supercell.com/fan-content-policy</div>
+  <div class="foot">
+    <div id="contact" style="margin-bottom:9px;color:var(--dim)"></div>
+    This material is unofficial and is not endorsed by Supercell.<br>
+    For more information see Supercell's Fan Content Policy: supercell.com/fan-content-policy</div>
 </div>
 
 <script>
-// ===== FILL THESE TWO =====
+// ===== FILL THESE =====
 const SUPABASE_URL = "https://rdckxcsrwahddnyhqlrm.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkY2t4Y3Nyd2FoZGRueWhxbHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzUzMTYsImV4cCI6MjA5NjA1MTMxNn0.PoOz4wIG2H_Hc71htjKqc9CXNVw1ILlox7Gh7-G44tU";
+const CONTACT = "Bigsap"; // optional: your Discord, e.g. "@yourname" or an invite link — shown in the footer
 // ==========================
 
 // Kill types = boss charge/chaos (stored in the `difficulty` column). [value, label, color]
@@ -320,5 +321,6 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   b.classList.add("on"); document.getElementById("p-"+b.dataset.p).classList.add("on");
   if(b.dataset.p==="me") renderMe();
 });
+if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
 buildChips(); addDrop(); load();
 </script>
