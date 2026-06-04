@@ -58,6 +58,8 @@ const P=new URLSearchParams(location.search);
 const HANDLE=(P.get("handle")||"").trim();
 const SITE=(P.get("site")||"").trim();
 const REFRESH=Math.max(3,parseInt(P.get("refresh")||"6",10))*1000;
+const BG=(P.get("bg")||"").trim();
+if(BG){ const v=/^[0-9a-fA-F]{3,8}$/.test(BG)?"#"+BG:BG; document.documentElement.style.background=v; document.body.style.background=v; }
 const H={apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"application/json"};
 const TIERS=[["semi","Semi","#4b8cf5"],["charged","Charged","#2fd07a"],["over","OC","#f5a623"],["mega","MC","#c887f7"]];
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
