@@ -101,6 +101,12 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
 .lb .lk{margin-left:auto;font-family:var(--m);font-size:12px;font-weight:700}
 .lb .ld{font-family:var(--m);font-size:11px;color:var(--dim2);min-width:62px;text-align:right}
 .card.dim{opacity:.5;transition:opacity .3s}
+.lookrow{display:flex;gap:8px;align-items:center}
+.lookrow input{flex:1}
+.lb .lh{cursor:pointer}
+.lb .lh:hover{color:var(--cyan2)}
+.backlink{font-size:11px;color:var(--cyan);cursor:pointer;font-weight:500;letter-spacing:0;text-transform:none;margin-left:auto}
+.backlink:hover{text-decoration:underline}
 .chlog{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:15px;padding:16px;margin-bottom:13px}
 .chlog .clist{display:flex;flex-direction:column;max-height:280px;overflow:auto}
 .ci{padding:9px 0;border-top:1px solid var(--line)}
@@ -133,7 +139,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
   <div class="seg">
     <button class="on" data-p="log">Log kill</button>
     <button data-p="stats">Stats</button>
-    <button data-p="me">Me</button>
+    <button data-p="me">Profile</button>
   </div>
 
   <div class="panel on" id="p-log">
@@ -179,10 +185,14 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(47,2
 
   <div class="panel" id="p-me">
     <div class="card">
-      <div class="h3">Your contribution</div>
-      <div id="meBody"></div>
+      <div class="h3">Hunter lookup</div>
+      <div class="lookrow">
+        <input id="lookup" placeholder="look up any hunter…" maxlength="24" onkeydown="if(event.key==='Enter')doLookup()">
+        <button class="btn p" onclick="doLookup()">Search</button>
+      </div>
+      <p class="note" style="margin-top:9px">Search any handle, or tap a name on the leaderboard. Leave empty to see your own stats (set your handle on the Log kill tab).</p>
     </div>
-    <div class="card"><div class="h3">Your recent kills</div><div class="feed" id="meFeed"></div></div>
+    <div id="profile"></div>
   </div>
 
   <div class="howto">
@@ -239,7 +249,7 @@ const TIERS=[["semi","Semi-Charged","#4b8cf5"],["charged","Charged","#2fd07a"],[
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
 const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
 
-let logKT="normal", viewKT="all";
+let logKT="normal", viewKT="all", lookupHandle=null;
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
@@ -309,7 +319,7 @@ async function logKill(noDrop){
 async function load(){
   if(!ok) return;
   try{ const all=await rpc("get_stats",{p_kt:"all"}); document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
-  render(); renderBoard(); renderFeed(); renderMe();
+  render(); renderBoard(); renderFeed(); renderProfile();
 }
 
 async function render(){
@@ -344,8 +354,10 @@ async function render(){
 
 async function renderBoard(){
   let arr=[]; try{ arr=await rpc("get_leaderboard",{lim:20}); }catch(e){ console.error(e); }
-  document.getElementById("board").innerHTML = (arr||[]).map((s,i)=>
-    `<div class="lb"><span class="rk">${i+1}</span><span class="lh">${esc(s.handle||"anon")}</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
+  const el=document.getElementById("board");
+  el.innerHTML = (arr||[]).map((s,i)=>
+    `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
+  el.onclick=(ev)=>{ const t=ev.target.closest(".lh[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
 }
 
 async function renderFeed(){
@@ -357,26 +369,99 @@ async function renderFeed(){
       <span class="dr">${dropsHTML(d)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
 }
 
-async function renderMe(){
-  const h=(document.getElementById("handle").value||"").trim();
-  const body=document.getElementById("meBody"), feed=document.getElementById("meFeed");
-  if(!h){ body.innerHTML=`<div class="note">Enter your handle on the <b>Log kill</b> tab, then come back here to see everything you've added.</div>`; feed.innerHTML=""; return; }
-  let m; try{ m=await rpc("get_me",{h}); }catch(e){ console.error(e); return; }
-  if(!m || !m.kills){ body.innerHTML=`<div class="note">Nothing logged under "<b>${esc(h)}</b>" yet. Log a kill and it'll show up here.</div>`; feed.innerHTML=""; return; }
+function activeProfile(){
+  return (lookupHandle && lookupHandle.trim()) ? lookupHandle.trim() : (document.getElementById("handle").value||"").trim();
+}
+function doLookup(){ lookupHandle=(document.getElementById("lookup").value||"").trim()||null; renderProfile(); }
+function clearLookup(){ lookupHandle=null; document.getElementById("lookup").value=""; renderProfile(); }
+function viewPlayer(h){
+  lookupHandle=h;
+  document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
+  document.querySelectorAll(".panel").forEach(x=>x.classList.remove("on"));
+  document.querySelector('.seg button[data-p="me"]').classList.add("on");
+  document.getElementById("p-me").classList.add("on");
+  document.getElementById("lookup").value=h;
+  renderProfile();
+}
+// 95% Wilson score interval for a proportion — honest range given sample size
+function wilson(pos,n){
+  if(!n) return [0,0];
+  const z=1.96,p=pos/n,d=1+z*z/n;
+  const c=(p+z*z/(2*n))/d, m=(z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n)))/d;
+  return [Math.max(0,c-m),Math.min(1,c+m)];
+}
+async function renderProfile(){
+  const wrap=document.getElementById("profile");
+  const h=activeProfile();
+  const yourH=(document.getElementById("handle").value||"").trim();
+  const isSelf = !lookupHandle || lookupHandle.trim().toLowerCase()===yourH.toLowerCase();
+  document.getElementById("lookup").value = lookupHandle||"";
+  if(!h){ wrap.innerHTML=`<div class="card"><div class="note">Set your handle on the <b>Log kill</b> tab, or search a hunter above.</div></div>`; return; }
+  wrap.innerHTML=`<div class="card"><div class="note">Loading ${esc(h)}…</div></div>`;
+  let m; try{ m=await rpc("get_player",{h}); }catch(e){ console.error(e); wrap.innerHTML=`<div class="card"><div class="note">Couldn't load that hunter.</div></div>`; return; }
+  if(!m || !m.kills){ wrap.innerHTML=`<div class="card"><div class="note">Nothing logged under "<b>${esc(h)}</b>" yet.</div></div>`; return; }
+
+  const back=(lookupHandle && !isSelf) ? `<span class="backlink" onclick="clearLookup()">← your stats</span>` : ``;
+  const rate=m.kills?m.with_drops/m.kills:0, [lo,hi]=wilson(m.with_drops,m.kills);
+  const cKills=(m.community&&m.community.kills)||0, cWith=(m.community&&m.community.with_drops)||0;
+  const cRate=cKills?cWith/cKills:0, luck=(rate-cRate)*100;
+  const luckCol=luck>1.5?"#2fd07a":luck<-1.5?"#ff6b47":"#8492a6";
+  const st=m.streaks||{};
+  const who=isSelf?"Your":"Their";
+
+  let html=`<div class="card">
+    <div class="h3">${esc(h)}${m.rank?` · rank #${m.rank} / ${m.contributors}`:``}${back}</div>
+    <div class="k4">
+      <div class="kpi"><div class="l">Kills</div><div class="v c">${m.kills.toLocaleString()}</div></div>
+      <div class="kpi"><div class="l">Drops</div><div class="v">${m.drops.toLocaleString()}</div></div>
+      <div class="kpi"><div class="l">Avg / kill</div><div class="v">${(m.kills?m.drops/m.kills:0).toFixed(2)}</div></div>
+      <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(rate*100).toFixed(1)}%</div></div>
+    </div>
+    <p class="note" style="margin-top:2px">95% confidence: ${(lo*100).toFixed(0)}–${(hi*100).toFixed(0)}% — the true drop rate range given ${m.kills.toLocaleString()} kills.</p>
+  </div>`;
+
+  html+=`<div class="card">
+    <div class="h3">Luck &amp; streaks</div>
+    <div class="k4">
+      <div class="kpi"><div class="l">Luck vs community</div><div class="v" style="color:${luckCol}">${luck>=0?"+":""}${luck.toFixed(1)}</div></div>
+      <div class="kpi"><div class="l">Current dry streak</div><div class="v">${st.current_dry||0}</div></div>
+      <div class="kpi"><div class="l">Longest dry streak</div><div class="v">${st.longest_dry||0}</div></div>
+      <div class="kpi"><div class="l">Best multi-drop</div><div class="v c">${st.best_multi||0}</div></div>
+    </div>
+    <p class="note" style="margin-top:2px">Luck = your drop rate (${(rate*100).toFixed(1)}%) minus community (${(cRate*100).toFixed(1)}%), in points. Dry streak = kills in a row with no drop.</p>
+  </div>`;
+
   const byType=m.by_type||{};
-  const kpi=`<div class="k4">
-    <div class="kpi"><div class="l">Your kills</div><div class="v c">${(m.kills||0).toLocaleString()}</div></div>
-    <div class="kpi"><div class="l">Your drops</div><div class="v">${(m.drops||0).toLocaleString()}</div></div>
-    <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(m.kills?100*m.with_drops/m.kills:0).toFixed(1)}%</div></div>
-    <div class="kpi"><div class="l">Rank</div><div class="v">${m.rank?"#"+m.rank+" / "+m.contributors:"—"}</div></div></div>`;
-  const bt=KT.filter(k=>byType[k[0]]).map(k=>`<div class="lb"><span class="lh" style="color:${k[2]}">${k[1]}</span><span class="lk">${byType[k[0]]} kills</span></div>`).join("");
-  body.innerHTML=`<p class="note">Logged as <b>${esc(h)}</b></p>`+kpi+(bt?`<div class="board" style="margin-top:4px">${bt}</div>`:"");
+  const bt=KT.filter(k=>byType[k[0]]).map(k=>`<div class="lb"><span class="lh" style="color:${k[2]};cursor:default">${k[1]}</span><span class="lk">${byType[k[0]]} kills</span></div>`).join("");
+  if(bt) html+=`<div class="card"><div class="h3">Kills by type</div><div class="board">${bt}</div></div>`;
+
+  const tiers=m.tiers||{}, td=m.drops||0, maxT=Math.max(...TIERS.map(t=>tiers[t[0]]||0),1);
+  const tierHTML=TIERS.map(([k,l,c])=>{
+    const v=tiers[k]||0,pc=td?100*v/td:0;
+    return `<div class="tier"><span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l}</span>
+      <span class="trk"><span class="fl" style="width:${100*v/maxT}%;background:linear-gradient(90deg,${c},${c}aa)"></span></span>
+      <span class="n">${v}</span><span class="p">${pc.toFixed(1)}%</span><span class="o">${v?"1/"+Math.round(m.kills/v):"—"}</span></div>`;}).join("");
+  html+=`<div class="card"><div class="h3">${who} tier breakdown</div>${tierHTML}</div>`;
+
+  const cores=m.cores||{}, commCores=(m.community&&m.community.cores)||{};
+  const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1);
+  const coreHTML=ce.map(([c,v])=>{
+    const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[c]||0)/cKills:0, col=CORE_COLOR[c]||"#8b6cff";
+    const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)";
+    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${c}</span>
+      <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
+      <span class="cn">${v}</span><span class="cr" style="color:${dCol}">${pr.toFixed(1)}%</span><span class="cx">vs ${cr.toFixed(1)}%</span></div>`;}).join("");
+  html+=`<div class="card"><div class="h3">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div>${coreHTML}</div>`;
+
   const tk_=tokens();
-  feed.innerHTML=(m.recent||[]).map(r=>{
+  const feed=(m.recent||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    const del=(r.id!=null&&tk_[r.id])?`<span class="x" title="delete this log" style="margin-left:10px" onclick="deleteLog(${r.id})">×</span>`:"";
+    const del=(isSelf && r.id!=null && tk_[r.id])?`<span class="x" title="delete this log" style="margin-left:10px" onclick="deleteLog(${r.id})">×</span>`:"";
     return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span>${del}</div>`;
   }).join("");
+  html+=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
+
+  wrap.innerHTML=html;
 }
 async function deleteLog(id){
   const t=tokens(), tok=t[id];
@@ -393,7 +478,7 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".seg button").forEach(x=>x.classList.remove("on"));
   document.querySelectorAll(".panel").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); document.getElementById("p-"+b.dataset.p).classList.add("on");
-  if(b.dataset.p==="me") renderMe();
+  if(b.dataset.p==="me") renderProfile();
 });
 if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
 buildChips(); addDrop(); renderLog(); load();
