@@ -136,6 +136,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   <div class="panel on" id="p-log">
     <div class="card">
       <div class="h3">Who &amp; what</div>
+      <div id="authBar" style="margin-bottom:14px"></div>
       <label>Your handle</label>
       <input id="handle" placeholder="e.g. bigsap" maxlength="24" style="margin-bottom:14px">
       <label>Kill type (the boss)</label>
@@ -208,6 +209,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
     For more information see Supercell's Fan Content Policy: supercell.com/fan-content-policy</div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // ===== FILL THESE =====
 const SUPABASE_URL = "https://rdckxcsrwahddnyhqlrm.supabase.co";
@@ -248,6 +250,49 @@ try{ document.getElementById("handle").value=localStorage.getItem("moco_handle")
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 function tokens(){ try{ return JSON.parse(localStorage.getItem("moco_tokens")||"{}"); }catch(e){ return {}; } }
 function saveTokens(t){ try{ localStorage.setItem("moco_tokens",JSON.stringify(t)); }catch(e){} }
+
+// ===== Discord auth + handle claim =====
+const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+let session=null, myClaim=null, VERIFIED=new Set();
+function authHeaders(){
+  const tok = session ? session.access_token : SUPABASE_KEY;
+  return {apikey:SUPABASE_KEY, Authorization:"Bearer "+tok, "Content-Type":"application/json"};
+}
+function discordName(){ const u=(session&&session.user&&session.user.user_metadata)||{}; return u.full_name||u.name||u.user_name||u.preferred_username||"Hunter"; }
+function vbadge(h){ return (h && VERIFIED.has(String(h).toLowerCase())) ? ` <span title="Verified — Discord-claimed handle" style="color:var(--cyan)">&#10003;</span>` : ""; }
+async function loadVerified(){ if(!sb) return; try{ const v=await rpc("verified_handles"); VERIFIED=new Set((v||[]).map(x=>String(typeof x==="object"&&x?Object.values(x)[0]:x).toLowerCase())); }catch(e){} }
+async function loadClaim(){ myClaim=null; if(!sb||!session) return; try{ const {data}=await sb.from("handle_claims").select("handle").maybeSingle(); myClaim=data?data.handle:null; }catch(e){} }
+function signInDiscord(){ if(sb) sb.auth.signInWithOAuth({provider:"discord",options:{redirectTo:location.href.split("#")[0]}}); }
+async function signOut(){ if(sb) await sb.auth.signOut(); session=null; myClaim=null; refreshAuthUI(); load(); }
+async function claimHandle(){
+  const h=(document.getElementById("handle").value||"").trim();
+  if(!h){ alert("Type the handle you want to claim first."); return; }
+  try{ await sb.rpc("claim_handle",{p_handle:h,p_discord:discordName()}); myClaim=h; await loadVerified(); refreshAuthUI(); load(); }
+  catch(e){ console.error(e); alert(/already claimed/i.test(e.message||"")?"That handle is already claimed by someone else.":"Couldn't claim it — see console."); }
+}
+function refreshAuthUI(){
+  const el=document.getElementById("authBar"); if(!el) return;
+  const hi=document.getElementById("handle");
+  if(!sb){ el.innerHTML=""; return; }
+  if(!session){
+    if(hi) hi.readOnly=false;
+    el.innerHTML=`<button class="btn g mini" onclick="signInDiscord()">Verify with Discord</button> <span class="st" style="margin-left:6px">Claim your handle so no one else can log under it.</span>`;
+    return;
+  }
+  if(myClaim){
+    if(hi){ hi.value=myClaim; hi.readOnly=true; try{localStorage.setItem("moco_handle",myClaim);}catch(e){} }
+    el.innerHTML=`<span class="st">&#10003; Verified as <b style="color:var(--cyan)">${esc(myClaim)}</b> · ${esc(discordName())}</span> <button class="btn g mini" style="margin-left:6px" onclick="signOut()">Sign out</button>`;
+  }else{
+    if(hi) hi.readOnly=false;
+    el.innerHTML=`<span class="st">Signed in as ${esc(discordName())}.</span> <button class="btn p mini" style="margin-left:6px" onclick="claimHandle()">Claim this handle</button> <button class="btn g mini" style="margin-left:6px" onclick="signOut()">Sign out</button>`;
+  }
+}
+async function initAuth(){
+  if(!sb){ refreshAuthUI(); return; }
+  try{ const {data}=await sb.auth.getSession(); session=data.session||null; }catch(e){}
+  await loadClaim(); refreshAuthUI();
+  sb.auth.onAuthStateChange(async (_e,s)=>{ session=s||null; await loadClaim(); refreshAuthUI(); load(); });
+}
 
 async function rpc(fn,args){
   const r=await fetch(SUPABASE_URL+"/rest/v1/rpc/"+fn,{method:"POST",headers:H,body:JSON.stringify(args||{})});
@@ -295,7 +340,7 @@ async function logKill(noDrop){
   const btn=document.getElementById("logBtn"),st=document.getElementById("status"); btn.disabled=true; st.textContent="saving…";
   const token=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random());
   try{
-    const r=await fetch(SUPABASE_URL+"/rest/v1/logs?select=id",{method:"POST",headers:{...H,Prefer:"return=representation"},
+    const r=await fetch(SUPABASE_URL+"/rest/v1/logs?select=id",{method:"POST",headers:{...authHeaders(),Prefer:"return=representation"},
       body:JSON.stringify({handle:handle||null,difficulty:logKT,drops,token})});
     if(!r.ok) throw new Error(await r.text());
     const row=await r.json(); const id=Array.isArray(row)&&row[0]?row[0].id:null;
@@ -309,6 +354,7 @@ async function logKill(noDrop){
 
 async function load(){
   if(!ok) return;
+  await loadVerified();
   try{ const all=await rpc("get_stats",{p_kt:"all"}); document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
   render(); renderBoard(); renderFeed(); renderProfile();
 }
@@ -347,7 +393,7 @@ async function renderBoard(){
   let arr=[]; try{ arr=await rpc("get_leaderboard",{lim:20}); }catch(e){ console.error(e); }
   const el=document.getElementById("board");
   el.innerHTML = (arr||[]).map((s,i)=>
-    `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
+    `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
   el.onclick=(ev)=>{ const t=ev.target.closest(".lh[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
 }
 
@@ -355,7 +401,7 @@ async function renderFeed(){
   let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
   document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    return `<div class="fi"><span class="who">${esc(r.handle||"anon")}</span>
+    return `<div class="fi"><span class="who">${esc(r.handle||"anon")}${vbadge(r.handle)}</span>
       <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
       <span class="dr">${dropsHTML(d)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
 }
@@ -401,7 +447,7 @@ async function renderProfile(){
   const who=isSelf?"Your":"Their";
 
   let html=`<div class="card">
-    <div class="h3">${esc(h)}${m.rank?` · rank #${m.rank} / ${m.contributors}`:``}${back}</div>
+    <div class="h3">${esc(h)}${vbadge(h)}${m.rank?` · rank #${m.rank} / ${m.contributors}`:``}${back}</div>
     <div class="k4">
       <div class="kpi"><div class="l">Kills</div><div class="v c">${m.kills.toLocaleString()}</div></div>
       <div class="kpi"><div class="l">Drops</div><div class="v">${m.drops.toLocaleString()}</div></div>
@@ -472,5 +518,5 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="me") renderProfile();
 });
 if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
-buildChips(); addDrop(); renderLog(); load();
+buildChips(); addDrop(); renderLog(); initAuth(); load();
 </script>
