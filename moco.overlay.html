@@ -1,0 +1,121 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>mo.co overlay</title>
+<!--
+  STREAM OVERLAY (OBS / Streamlabs browser source) — vertical, fits beside/under a webcam.
+  1) Host next to the tracker (same GitHub Pages repo is fine).
+  2) OBS: + Source > Browser. URL:
+        https://<your-site>/moco_overlay.html?handle=YourTag
+     Width 360, Height 900 (scale/position in OBS). Background is transparent.
+  3) Optional params:  &refresh=6   (seconds, min 3)   &site=yoursite.com  (shown in footer to advertise)
+  Read-only (anon key). Logging still happens in the main tracker.
+-->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+:root{--lime:#c6ff3a;--mag:#ff3da6;--card:#16111f;--card2:#0f0a16;--line:#2a1f38;--txt:#f3eefa;--txt2:#bcb0c9;--dim:#7d7090;
+  --semi:#4b8cf5;--charged:#2fd07a;--over:#f5a623;--mega:#c887f7;--d:'Fredoka',sans-serif;--m:'Outfit',sans-serif;}
+*{box-sizing:border-box}
+html,body{margin:0;background:transparent}
+body{font-family:var(--m);font-variant-numeric:tabular-nums;color:var(--txt);padding:10px;-webkit-font-smoothing:antialiased}
+.wrap{width:340px}
+.card{background:linear-gradient(180deg,rgba(22,17,31,.94),rgba(15,10,22,.94));border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:9px;box-shadow:0 0 0 1px rgba(198,255,58,.07),0 12px 34px rgba(0,0,0,.5)}
+.top{display:flex;align-items:center;gap:8px;padding:14px;margin-bottom:9px;background:linear-gradient(180deg,rgba(22,17,31,.94),rgba(15,10,22,.94));border:1px solid var(--line);border-radius:16px}
+.live{display:flex;align-items:center;gap:6px;font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--lime)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.name{margin-left:auto;font-family:var(--d);font-weight:700;font-size:18px;line-height:1;text-align:right}
+.rank{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:right;margin-top:4px}
+.h{font-size:8.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 11px}
+.k4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:9px 11px;position:relative;overflow:hidden}
+.kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--lime),var(--mag));opacity:.7}
+.kpi .l{font-size:8px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.kpi .v{font-family:var(--d);font-weight:600;font-size:20px;margin-top:3px;line-height:1}
+.kpi .v.c{color:var(--lime)}
+.trow{display:grid;grid-template-columns:56px 1fr 24px 38px;align-items:center;gap:7px;margin-bottom:8px}
+.badge{font-family:var(--d);font-size:8px;font-weight:600;text-transform:uppercase;padding:3px 5px;border-radius:6px;text-align:center}
+.trk{height:9px;background:var(--card2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.fl{display:block;height:100%;border-radius:6px}
+.tn{font-family:var(--d);font-weight:600;font-size:11px;text-align:right}
+.tp{font-size:9px;color:var(--dim);text-align:right}
+.crow{display:grid;grid-template-columns:104px 1fr 34px 44px;align-items:center;gap:7px;margin-bottom:7px}
+.cnm{font-size:10.5px;display:flex;align-items:center;gap:6px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cdot{width:6px;height:6px;border-radius:50%;flex:0 0 auto}
+.cct{height:8px;background:var(--card2);border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.ccf{display:block;height:100%;border-radius:5px}
+.cpr{font-family:var(--m);font-weight:600;font-size:10.5px;text-align:right}
+.cvs{font-size:9px;color:var(--dim);text-align:right}
+.foot{display:flex;align-items:center;justify-content:center;gap:6px;font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);padding:2px 0 4px}
+.foot .gd{width:6px;height:6px;border-radius:50%;background:var(--lime);box-shadow:0 0 6px var(--lime)}
+.empty{font-size:12px;color:var(--dim);padding:6px 2px}
+</style></head>
+<body>
+<div class="wrap" id="wrap"><div class="card"><div class="empty">Loading…</div></div></div>
+<script>
+const URL_="https://rdckxcsrwahddnyhqlrm.supabase.co";
+const KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkY2t4Y3Nyd2FoZGRueWhxbHJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0NzUzMTYsImV4cCI6MjA5NjA1MTMxNn0.PoOz4wIG2H_Hc71htjKqc9CXNVw1ILlox7Gh7-G44tU";
+const P=new URLSearchParams(location.search);
+const HANDLE=(P.get("handle")||"").trim();
+const SITE=(P.get("site")||"").trim();
+const REFRESH=Math.max(3,parseInt(P.get("refresh")||"6",10))*1000;
+const H={apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"application/json"};
+const TIERS=[["semi","Semi","#4b8cf5"],["charged","Charged","#2fd07a"],["over","OC","#f5a623"],["mega","MC","#c887f7"]];
+const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
+const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const wrap=document.getElementById("wrap");
+let VERIFIED=new Set();
+async function rpc(fn,args){const r=await fetch(URL_+"/rest/v1/rpc/"+fn,{method:"POST",headers:H,body:JSON.stringify(args||{})});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function loadVerified(){try{const v=await rpc("verified_handles");VERIFIED=new Set((v||[]).map(x=>String(typeof x==="object"&&x?Object.values(x)[0]:x).toLowerCase()));}catch(e){}}
+function vb(h){return h&&VERIFIED.has(String(h).toLowerCase())?` <span style="color:var(--lime)">&#10003;</span>`:"";}
+const foot=`<div class="foot"><span class="gd"></span>mo.co Drop Tracker${SITE?` · ${esc(SITE)}`:""}</div>`;
+
+async function tick(){
+  if(!HANDLE){ wrap.innerHTML=`<div class="card"><div class="empty">Add <b>?handle=YourTag</b> to the overlay URL.</div></div>`; return; }
+  let m; try{ m=await rpc("get_player",{h:HANDLE}); }catch(e){ console.error(e); return; }
+  const head=`<div class="top"><div class="live"><span class="dot"></span>live</div><div><div class="name">${esc(HANDLE)}${vb(HANDLE)}</div>${(m&&m.rank)?`<div class="rank">rank #${m.rank} / ${m.contributors}</div>`:``}</div></div>`;
+  if(!m||!m.kills){ wrap.innerHTML=head+`<div class="card"><div class="empty">No kills logged yet.</div></div>`+foot; return; }
+
+  const rate=m.with_drops/m.kills, avg=m.drops/m.kills;
+  const c=m.community||{}, cKills=c.kills||0, cRate=(cKills?c.with_drops/cKills:0);
+  const luck=(rate-cRate)*100, luckCol=luck>1.5?"#2fd07a":luck<-1.5?"#ff6b47":"var(--txt2)";
+  const st=m.streaks||{};
+
+  const kpis=`<div class="card"><div class="h">Overview</div><div class="k4">
+    <div class="kpi"><div class="l">Kills</div><div class="v c">${m.kills.toLocaleString()}</div></div>
+    <div class="kpi"><div class="l">Drops</div><div class="v">${m.drops.toLocaleString()}</div></div>
+    <div class="kpi"><div class="l">Avg / kill</div><div class="v">${avg.toFixed(2)}</div></div>
+    <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(rate*100).toFixed(1)}%</div></div>
+  </div></div>`;
+
+  const luckCard=`<div class="card"><div class="h">Luck &amp; streaks</div><div class="k4">
+    <div class="kpi"><div class="l">Luck vs community</div><div class="v" style="color:${luckCol}">${luck>=0?"+":""}${luck.toFixed(1)}</div></div>
+    <div class="kpi"><div class="l">Current dry</div><div class="v">${st.current_dry||0}</div></div>
+    <div class="kpi"><div class="l">Longest dry</div><div class="v">${st.longest_dry||0}</div></div>
+    <div class="kpi"><div class="l">Best multi-drop</div><div class="v c">${st.best_multi||0}</div></div>
+  </div></div>`;
+
+  const tiers=m.tiers||{}, td=m.drops||0, maxT=Math.max(...TIERS.map(t=>tiers[t[0]]||0),1);
+  const tierRows=TIERS.map(([k,l,col])=>{
+    const v=tiers[k]||0, pc=td?100*v/td:0;
+    return `<div class="trow"><span class="badge" style="background:${col}22;color:${col};border:1px solid ${col}55">${l}</span>
+      <span class="trk"><span class="fl" style="width:${100*v/maxT}%;background:linear-gradient(90deg,${col},${col}aa)"></span></span>
+      <span class="tn">${v}</span><span class="tp">${pc.toFixed(1)}%</span></div>`;}).join("");
+  const tierCard=`<div class="card"><div class="h">Tier breakdown</div>${tierRows}</div>`;
+
+  const cores=m.cores||{}, commCores=c.cores||{};
+  const ce=CORES.map(x=>[x,cores[x]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1);
+  const coreRows=ce.map(([name,v])=>{
+    const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[name]||0)/cKills:0, col=CORE_COLOR[name]||"#8b6cff";
+    const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--lime)";
+    return `<div class="crow"><span class="cnm" title="${esc(name)}"><span class="cdot" style="background:${col}"></span>${esc(name)}</span>
+      <span class="cct"><span class="ccf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
+      <span class="cpr" style="color:${dCol}">${pr.toFixed(1)}%</span><span class="cvs">vs ${cr.toFixed(1)}%</span></div>`;}).join("");
+  const coreCard=`<div class="card"><div class="h">Cores · % of kills vs community</div>${coreRows}</div>`;
+
+  wrap.innerHTML=head+kpis+luckCard+tierCard+coreCard+foot;
+}
+loadVerified().then(tick);
+setInterval(tick, REFRESH);
+</script>
+</body></html>
