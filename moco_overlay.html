@@ -60,6 +60,7 @@ const SITE=(P.get("site")||"").trim();
 const REFRESH=Math.max(3,parseInt(P.get("refresh")||"6",10))*1000;
 const BG=(P.get("bg")||"").trim();
 if(BG){ const v=/^[0-9a-fA-F]{3,8}$/.test(BG)?"#"+BG:BG; document.documentElement.style.background=v; document.body.style.background=v; }
+const HIDE=new Set((P.get("hide")||"").toLowerCase().split(",").map(s=>s.trim()).filter(Boolean));
 const H={apikey:KEY,Authorization:"Bearer "+KEY,"Content-Type":"application/json"};
 const TIERS=[["semi","Semi","#4b8cf5"],["charged","Charged","#2fd07a"],["over","OC","#f5a623"],["mega","MC","#c887f7"]];
 const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Health","Healing Received","Dodge"];
@@ -76,7 +77,7 @@ async function tick(){
   if(!HANDLE){ wrap.innerHTML=`<div class="card"><div class="empty">Add <b>?handle=YourTag</b> to the overlay URL.</div></div>`; return; }
   let m; try{ m=await rpc("get_player",{h:HANDLE}); }catch(e){ console.error(e); return; }
   const head=`<div class="top"><div class="live"><span class="dot"></span>live</div><div><div class="name">${esc(HANDLE)}${vb(HANDLE)}</div>${(m&&m.rank)?`<div class="rank">rank #${m.rank} / ${m.contributors}</div>`:``}</div></div>`;
-  if(!m||!m.kills){ wrap.innerHTML=head+`<div class="card"><div class="empty">No kills logged yet.</div></div>`+foot; return; }
+  if(!m||!m.kills){ wrap.innerHTML=(HIDE.has("header")?"":head)+`<div class="card"><div class="empty">No kills logged yet.</div></div>`+(HIDE.has("footer")?"":foot); return; }
 
   const rate=m.with_drops/m.kills, avg=m.drops/m.kills;
   const c=m.community||{}, cKills=c.kills||0, cRate=(cKills?c.with_drops/cKills:0);
@@ -115,7 +116,14 @@ async function tick(){
       <span class="cpr" style="color:${dCol}">${pr.toFixed(1)}%</span><span class="cvs">vs ${cr.toFixed(1)}%</span></div>`;}).join("");
   const coreCard=`<div class="card"><div class="h">Cores · % of kills vs community</div>${coreRows}</div>`;
 
-  wrap.innerHTML=head+kpis+luckCard+tierCard+coreCard+foot;
+  const parts=[];
+  if(!HIDE.has("header")) parts.push(head);
+  if(!HIDE.has("overview")) parts.push(kpis);
+  if(!HIDE.has("luck")) parts.push(luckCard);
+  if(!HIDE.has("tiers")) parts.push(tierCard);
+  if(!HIDE.has("cores")) parts.push(coreCard);
+  if(!HIDE.has("footer")) parts.push(foot);
+  wrap.innerHTML=parts.join("");
 }
 loadVerified().then(tick);
 setInterval(tick, REFRESH);
