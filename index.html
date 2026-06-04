@@ -348,7 +348,11 @@ async function logKill(noDrop){
     document.getElementById("drops").innerHTML="";
     st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1400);
     await load();
-  }catch(e){ st.textContent="error — see console"; console.error(e); }
+  }catch(e){
+    let msg=e.message||""; try{ const j=JSON.parse(msg); msg=j.message||j.msg||msg; }catch(_){}
+    if(/is claimed/i.test(msg)){ st.textContent="🔒 That handle is verified — sign in with Discord to log under it."; }
+    else { st.textContent="error — see console"; console.error(e); }
+  }
   btn.disabled=false;
 }
 
