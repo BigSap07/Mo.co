@@ -25,12 +25,12 @@ body{font-family:var(--m);font-variant-numeric:tabular-nums;color:var(--txt);pad
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 .name{margin-left:auto;font-family:var(--d);font-weight:700;font-size:18px;line-height:1;text-align:right}
 .rank{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);text-align:right;margin-top:4px}
-.h{font-size:8.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 11px}
+.h{font-size:8.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 11px;text-align:center}
 .k4{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .kpi{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:9px 11px;position:relative;overflow:hidden}
 .kpi::after{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(var(--lime),var(--mag));opacity:.7}
-.kpi .l{font-size:8px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
-.kpi .v{font-family:var(--d);font-weight:600;font-size:20px;margin-top:3px;line-height:1}
+.kpi .l{font-size:8px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);text-align:center}
+.kpi .v{font-family:var(--d);font-weight:600;font-size:20px;margin-top:3px;line-height:1;text-align:center}
 .kpi .v.c{color:var(--lime)}
 .trow{display:grid;grid-template-columns:56px 1fr 24px 38px;align-items:center;gap:7px;margin-bottom:8px}
 .badge{font-family:var(--d);font-size:8px;font-weight:600;text-transform:uppercase;padding:3px 5px;border-radius:6px;text-align:center}
@@ -67,6 +67,7 @@ const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Hea
 const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const wrap=document.getElementById("wrap");
+const W=Math.max(220,parseInt(P.get("w")||"340",10)); wrap.style.width=W+"px";
 let VERIFIED=new Set();
 async function rpc(fn,args){const r=await fetch(URL_+"/rest/v1/rpc/"+fn,{method:"POST",headers:H,body:JSON.stringify(args||{})});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function loadVerified(){try{const v=await rpc("verified_handles");VERIFIED=new Set((v||[]).map(x=>String(typeof x==="object"&&x?Object.values(x)[0]:x).toLowerCase()));}catch(e){}}
