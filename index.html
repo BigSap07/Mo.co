@@ -86,6 +86,10 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .fi .kt{font-family:var(--d);font-size:9px;font-weight:600;text-transform:uppercase;padding:3px 7px;border-radius:6px;letter-spacing:.03em}
 .fi .dr{margin-left:auto;font-family:var(--m);font-size:10.5px;color:var(--dim);text-align:right}
 .foot{font-family:var(--m);font-size:12px;color:var(--dim);line-height:1.7;margin-top:20px;text-align:center;letter-spacing:.02em}
+.pulse{font-family:var(--m);font-size:12px;color:var(--txt2);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:12px;padding:11px 14px;margin-bottom:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pulse b{color:var(--txt)}
+.pulse .pdot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan);flex:0 0 auto;animation:pulseDot 1.8s infinite}
+@keyframes pulseDot{0%,100%{opacity:1}50%{opacity:.3}}
 .callout{border:1px solid var(--line2);border-left:3px solid var(--cyan);background:var(--card2);border-radius:10px;padding:10px 12px;color:var(--txt2)}
 .callout b{color:var(--cyan2)}
 .conf{margin-top:13px}
@@ -158,6 +162,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   </div>
 
   <div class="panel" id="p-stats">
+    <div class="pulse" id="pulse"></div>
     <div class="card">
       <div class="h3">View kill type</div>
       <div class="chips" id="filtChips"></div>
@@ -334,6 +339,41 @@ function addDrop(){
     <select class="dt">${TIERS.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join("")}</select>
     <span class="x" onclick="this.parentElement.remove()">×</span></div>`);
 }
+function celebrate(level){
+  const big=level==="mega";
+  const cv=document.createElement("canvas");
+  cv.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9999";
+  cv.width=innerWidth; cv.height=innerHeight; document.body.appendChild(cv);
+  const x=cv.getContext("2d");
+  const cols=big?["#c887f7","#c6ff3a","#ff3da6","#ffffff","#f5d33b"]:["#f5a623","#c6ff3a","#ffffff"];
+  const N=big?170:80, parts=[];
+  for(let i=0;i<N;i++) parts.push({x:innerWidth/2+(Math.random()-.5)*140,y:innerHeight*0.34,vx:(Math.random()-.5)*15,vy:-9-Math.random()*13,g:.34+Math.random()*.22,s:5+Math.random()*7,c:cols[(Math.random()*cols.length)|0],r:Math.random()*6.28,vr:(Math.random()-.5)*.4,a:1});
+  let t0=performance.now();
+  (function frame(t){
+    const dt=Math.min(2.2,(t-t0)/16.7); t0=t; x.clearRect(0,0,cv.width,cv.height); let alive=false;
+    for(const p of parts){ p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.r+=p.vr*dt; if(p.y>innerHeight*.5)p.a-=.012*dt;
+      if(p.a>0&&p.y<cv.height+24){ alive=true; x.save(); x.globalAlpha=Math.max(0,p.a); x.translate(p.x,p.y); x.rotate(p.r); x.fillStyle=p.c; x.fillRect(-p.s/2,-p.s/2,p.s,p.s*.5); x.restore(); } }
+    if(alive) requestAnimationFrame(frame); else cv.remove();
+  })(t0);
+  try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; const ac=new AC(),now=ac.currentTime;
+    (big?[523.25,659.25,783.99,1046.5]:[659.25,987.77]).forEach((f,i)=>{ const o=ac.createOscillator(),gn=ac.createGain(); o.type="triangle"; o.frequency.value=f; const ts=now+i*0.09;
+      gn.gain.setValueAtTime(0,ts); gn.gain.linearRampToValueAtTime(0.08,ts+0.02); gn.gain.exponentialRampToValueAtTime(0.0001,ts+0.5); o.connect(gn).connect(ac.destination); o.start(ts); o.stop(ts+0.55); });
+    setTimeout(()=>{try{ac.close()}catch(e){}},1600);
+  }catch(e){}
+}
+async function renderPulse(){
+  const el=document.getElementById("pulse"); if(!el) return;
+  const since=new Date(); since.setHours(0,0,0,0);
+  let rows=[]; try{ rows=await rest("logs?select=handle,drop_count&hidden=is.false&created_at=gte."+encodeURIComponent(since.toISOString())+"&limit=5000"); }catch(e){ el.innerHTML=""; return; }
+  const n=rows.length;
+  if(!n){ el.innerHTML=`<span class="pdot"></span> Quiet so far today — be the first to log a Big Papa run.`; return; }
+  const wd=rows.filter(r=>(r.drop_count||0)>0).length, rate=100*wd/n, by={};
+  rows.forEach(r=>{ const h=r.handle||"anon"; (by[h]=by[h]||{k:0,d:0}); by[h].k++; by[h].d+=(r.drop_count||0); });
+  let lucky=null; Object.entries(by).forEach(([h,v])=>{ if(v.k>=10){ const a=v.d/v.k; if(!lucky||a>lucky.a) lucky={h,a}; } });
+  let active=null; Object.entries(by).forEach(([h,v])=>{ if(!active||v.k>active.k) active={h,k:v.k}; });
+  const tail = lucky?`luckiest: <b style="color:var(--cyan)">${esc(lucky.h)}</b>${vbadge(lucky.h)}` : (active?`most active: <b style="color:var(--cyan)">${esc(active.h)}</b>${vbadge(active.h)} (${active.k})`:"");
+  el.innerHTML=`<span class="pdot"></span> <b>Today:</b> ${n.toLocaleString()} kills logged · ${rate.toFixed(0)}% drop rate${tail?` · ${tail}`:""}`;
+}
 async function logKill(noDrop){
   if(!ok){alert("Set your Supabase URL + key at the top of the file first.");return;}
   const handle=document.getElementById("handle").value.trim();
@@ -350,6 +390,7 @@ async function logKill(noDrop){
     if(id!=null){ const t=tokens(); t[id]=token; saveTokens(t); }
     document.getElementById("drops").innerHTML="";
     st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1400);
+    if(drops.some(d=>d.tier==="mega")) celebrate("mega"); else if(drops.some(d=>d.tier==="over")) celebrate("over");
     await load();
   }catch(e){
     let msg=e.message||""; try{ const j=JSON.parse(msg); msg=j.message||j.msg||msg; }catch(_){}
@@ -363,7 +404,7 @@ async function load(){
   if(!ok) return;
   await loadVerified();
   try{ const all=await rpc("get_stats",{p_kt:"all"}); COMM={kills:all.kills||0,drops:all.drops||0}; document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
-  render(); renderBoard(); renderFeed(); renderProfile();
+  render(); renderBoard(); renderFeed(); renderProfile(); renderPulse();
 }
 
 async function render(){
