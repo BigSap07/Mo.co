@@ -329,13 +329,14 @@ function buildChips(){
 }
 const TSHORT={semi:"S",charged:"C",over:"OC",mega:"MC"};
 const TCOLOR=Object.fromEntries(TIERS.map(t=>[t[0],t[2]]));
+const coreLabel=c=>c==="Crit Damage"?"Critical Damage":c;
 function dropsHTML(d){
   if(!d||!d.length) return `<span style="color:var(--dim2)">no drop</span>`;
-  return d.map(x=>`<span style="color:${TCOLOR[x.tier]||'#8492a6'};font-weight:600">${esc((TSHORT[x.tier]||"")+" "+x.core)}</span>`).join(`<span style="color:var(--dim2)">, </span>`);
+  return d.map(x=>`<span style="color:${TCOLOR[x.tier]||'#8492a6'};font-weight:600">${esc((TSHORT[x.tier]||"")+" "+coreLabel(x.core))}</span>`).join(`<span style="color:var(--dim2)">, </span>`);
 }
 function addDrop(){
   document.getElementById("drops").insertAdjacentHTML("beforeend",
-   `<div class="dl"><select class="dc">${CORES.map(c=>`<option>${c}</option>`).join("")}</select>
+   `<div class="dl"><select class="dc">${CORES.map(c=>`<option value="${c}">${coreLabel(c)}</option>`).join("")}</select>
     <select class="dt">${TIERS.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join("")}</select>
     <span class="x" onclick="this.parentElement.remove()">×</span></div>`);
 }
@@ -426,7 +427,7 @@ async function render(){
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]),maxC=Math.max(...ce.map(e=>e[1]),1);
   document.getElementById("cores").innerHTML=ce.map(([c,v])=>{
     const rate=tk?100*v/tk:0,ox=v?Math.round(tk/v):0,col=CORE_COLOR[c]||"#8b6cff";
-    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${c}</span>
+    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${coreLabel(c)}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
       <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;}).join("");
   const MIN=30;
@@ -540,7 +541,7 @@ async function renderProfile(){
   const coreHTML=ce.map(([c,v])=>{
     const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[c]||0)/cKills:0, col=CORE_COLOR[c]||"#8b6cff";
     const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)";
-    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${c}</span>
+    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${coreLabel(c)}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
       <span class="cn">${v}</span><span class="cr" style="color:${dCol}">${pr.toFixed(1)}%</span><span class="cx">vs ${cr.toFixed(1)}%</span></div>`;}).join("");
   html+=`<div class="card"><div class="h3">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div>${coreHTML}</div>`;
@@ -565,7 +566,7 @@ async function shareCard(){
   g=x.createRadialGradient(-40,Hc+40,0,-40,Hc+40,720); g.addColorStop(0,"rgba(198,255,58,.13)"); g.addColorStop(1,"rgba(198,255,58,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
   x.strokeStyle="rgba(198,255,58,.22)"; x.lineWidth=2; rr(x,20,20,W-40,Hc-40,30); x.stroke();
   x.textBaseline="alphabetic"; x.textAlign="left";
-  x.fillStyle="#c6ff3a"; x.font="600 22px Outfit"; x.fillText("M O . C O   ·   B I G   P A P A   D R O P   T R A C K E R", P, 102);
+  x.fillStyle="#c6ff3a"; x.font="600 22px Outfit"; x.fillText("M O . C O   ·   D R O P   T R A C K E R", P, 102);
   x.fillStyle="#f3eefa"; x.font="700 72px Fredoka"; const hw=x.measureText(d.handle).width; x.fillText(d.handle, P, 188);
   if(d.verified){ x.fillStyle="#c6ff3a"; x.font="700 54px Fredoka"; x.fillText("\u2713", P+hw+20, 188); }
   if(d.rank){ x.fillStyle="#7d7090"; x.font="600 26px Outfit"; x.fillText("RANK #"+d.rank+" / "+d.contributors, P, 230); }
@@ -579,7 +580,7 @@ async function shareCard(){
   let cy=292+2*(th+30)+44; x.fillStyle="#7d7090"; x.font="600 22px Outfit"; x.fillText("TOP CORES", P, cy); cy+=46;
   const maxv=Math.max(...d.cores.map(c=>c[1]),1);
   d.cores.slice(0,4).forEach(([name,v])=>{ const pr=d.kills?100*v/d.kills:0, col=CORE_COLOR[name]||"#8b6cff";
-    x.fillStyle="#bcb0c9"; x.font="600 30px Outfit"; x.textAlign="left"; x.fillText(name, P, cy+8);
+    x.fillStyle="#bcb0c9"; x.font="600 30px Outfit"; x.textAlign="left"; x.fillText(coreLabel(name), P, cy+8);
     const bx=P+360, bw=W-P-120-bx, bh=18; x.fillStyle="#15101d"; rr(x,bx,cy-10,bw,bh,9); x.fill();
     x.fillStyle=col; rr(x,bx,cy-10,Math.max(10,bw*v/maxv),bh,9); x.fill();
     x.fillStyle=col; x.font="700 28px Fredoka"; x.textAlign="right"; x.fillText(pr.toFixed(1)+"%", W-P, cy+8); cy+=60; });
