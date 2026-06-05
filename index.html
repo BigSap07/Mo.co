@@ -97,6 +97,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .lb .lh:hover{color:var(--cyan)}
 .lb .lk{margin-left:auto;font-family:var(--m);font-size:12px;font-weight:600;color:var(--txt)}
 .lb .ld{font-family:var(--m);font-size:11px;color:var(--dim);min-width:62px;text-align:right}
+.lb .luck{font-family:var(--m);font-weight:700;font-size:11px;min-width:42px;text-align:right}
 .card.dim{opacity:.5;transition:opacity .3s}
 .lookrow{display:flex;gap:8px;align-items:center}.lookrow input{flex:1}
 .backlink{font-family:var(--m);font-size:11px;font-weight:600;color:var(--cyan);cursor:pointer;letter-spacing:.02em;text-transform:none;margin-left:auto}
@@ -171,7 +172,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
     </div>
     <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
     <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
-    <div class="card"><div class="h3">Top contributors</div><div class="board" id="board"></div></div>
+    <div class="card"><div class="h3">Top contributors</div><p class="note" style="margin:-4px 0 12px">Luck % = drops per kill vs the community average.</p><div class="board" id="board"></div></div>
     <div class="card"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
   </div>
 
@@ -255,6 +256,7 @@ function saveTokens(t){ try{ localStorage.setItem("moco_tokens",JSON.stringify(t
 // ===== Discord auth + handle claim =====
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 let session=null, myClaim=null, VERIFIED=new Set();
+let COMM={kills:0,drops:0}, cardData=null;
 function authHeaders(){
   const tok = session ? session.access_token : SUPABASE_KEY;
   return {apikey:SUPABASE_KEY, Authorization:"Bearer "+tok, "Content-Type":"application/json"};
@@ -360,7 +362,7 @@ async function logKill(noDrop){
 async function load(){
   if(!ok) return;
   await loadVerified();
-  try{ const all=await rpc("get_stats",{p_kt:"all"}); document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
+  try{ const all=await rpc("get_stats",{p_kt:"all"}); COMM={kills:all.kills||0,drops:all.drops||0}; document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
   render(); renderBoard(); renderFeed(); renderProfile();
 }
 
@@ -397,8 +399,13 @@ async function render(){
 async function renderBoard(){
   let arr=[]; try{ arr=await rpc("get_leaderboard",{lim:20}); }catch(e){ console.error(e); }
   const el=document.getElementById("board");
-  el.innerHTML = (arr||[]).map((s,i)=>
-    `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`).join("") || `<div class="note">No contributors yet.</div>`;
+  const commAvg = COMM.kills ? COMM.drops/COMM.kills : 0;
+  el.innerHTML = (arr||[]).map((s,i)=>{
+    const avg = s.kills ? s.drops/s.kills : 0;
+    const luck = commAvg ? (avg/commAvg-1)*100 : 0;
+    const lc = luck>2?"#2fd07a":luck<-2?"#ff6b47":"var(--dim)";
+    return `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span><span class="luck" style="color:${lc}" title="Drops per kill vs community average">${luck>=0?"+":""}${luck.toFixed(0)}%</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`;
+  }).join("") || `<div class="note">No contributors yet.</div>`;
   el.onclick=(ev)=>{ const t=ev.target.closest(".lh[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
 }
 
@@ -460,6 +467,7 @@ async function renderProfile(){
       <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(rate*100).toFixed(1)}%</div></div>
     </div>
     <p class="note" style="margin-top:2px">95% confidence: ${(lo*100).toFixed(0)}–${(hi*100).toFixed(0)}% — the true drop rate range given ${m.kills.toLocaleString()} kills.</p>
+    <button class="btn g mini" style="margin-top:12px" onclick="shareCard()">Share stat card</button>
   </div>`;
 
   html+=`<div class="card">
@@ -487,6 +495,7 @@ async function renderProfile(){
 
   const cores=m.cores||{}, commCores=(m.community&&m.community.cores)||{};
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1);
+  cardData={handle:h,verified:VERIFIED.has(String(h).toLowerCase()),rank:m.rank,contributors:m.contributors,kills:m.kills,drops:m.drops,rate:rate,avg:(m.kills?m.drops/m.kills:0),luck:luck,luckCol:luckCol,cores:ce};
   const coreHTML=ce.map(([c,v])=>{
     const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[c]||0)/cKills:0, col=CORE_COLOR[c]||"#8b6cff";
     const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)";
@@ -504,6 +513,40 @@ async function renderProfile(){
   html+=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
 
   wrap.innerHTML=html;
+}
+function rr(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath();}
+async function shareCard(){
+  if(!cardData) return; const d=cardData; const W=1080,Hc=1080,P=72;
+  const cv=document.createElement("canvas"); cv.width=W; cv.height=Hc; const x=cv.getContext("2d");
+  try{ await Promise.all([document.fonts.load("700 72px Fredoka"),document.fonts.load("700 60px Fredoka"),document.fonts.load("600 30px Outfit"),document.fonts.load("600 24px Outfit")]); await document.fonts.ready; }catch(e){}
+  x.fillStyle="#0b0710"; x.fillRect(0,0,W,Hc);
+  let g=x.createRadialGradient(W*0.85,-60,0,W*0.85,-60,720); g.addColorStop(0,"rgba(255,61,166,.18)"); g.addColorStop(1,"rgba(255,61,166,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
+  g=x.createRadialGradient(-40,Hc+40,0,-40,Hc+40,720); g.addColorStop(0,"rgba(198,255,58,.13)"); g.addColorStop(1,"rgba(198,255,58,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
+  x.strokeStyle="rgba(198,255,58,.22)"; x.lineWidth=2; rr(x,20,20,W-40,Hc-40,30); x.stroke();
+  x.textBaseline="alphabetic"; x.textAlign="left";
+  x.fillStyle="#c6ff3a"; x.font="600 22px Outfit"; x.fillText("M O . C O   ·   B I G   P A P A   D R O P   T R A C K E R", P, 102);
+  x.fillStyle="#f3eefa"; x.font="700 72px Fredoka"; const hw=x.measureText(d.handle).width; x.fillText(d.handle, P, 188);
+  if(d.verified){ x.fillStyle="#c6ff3a"; x.font="700 54px Fredoka"; x.fillText("\u2713", P+hw+20, 188); }
+  if(d.rank){ x.fillStyle="#7d7090"; x.font="600 26px Outfit"; x.fillText("RANK #"+d.rank+" / "+d.contributors, P, 230); }
+  const tiles=[["KILLS",d.kills.toLocaleString(),"#c6ff3a"],["DROP RATE",(d.rate*100).toFixed(1)+"%","#c6ff3a"],["LUCK VS COMMUNITY",(d.luck>=0?"+":"")+d.luck.toFixed(1),d.luckCol],["AVG / KILL",d.avg.toFixed(2),"#f3eefa"]];
+  const tw=(W-P*2-30)/2, th=152;
+  tiles.forEach((t,i)=>{ const tx=P+(i%2)*(tw+30), ty=292+Math.floor(i/2)*(th+30);
+    x.fillStyle="#15101d"; rr(x,tx,ty,tw,th,18); x.fill(); x.strokeStyle="#2a1f38"; x.lineWidth=1.5; rr(x,tx,ty,tw,th,18); x.stroke();
+    x.fillStyle="#c6ff3a"; rr(x,tx,ty+26,4,th-52,2); x.fill();
+    x.fillStyle="#7d7090"; x.font="600 22px Outfit"; x.fillText(t[0], tx+30, ty+52);
+    x.fillStyle=t[2]; x.font="700 58px Fredoka"; x.fillText(t[1], tx+28, ty+120); });
+  let cy=292+2*(th+30)+44; x.fillStyle="#7d7090"; x.font="600 22px Outfit"; x.fillText("TOP CORES", P, cy); cy+=46;
+  const maxv=Math.max(...d.cores.map(c=>c[1]),1);
+  d.cores.slice(0,4).forEach(([name,v])=>{ const pr=d.kills?100*v/d.kills:0, col=CORE_COLOR[name]||"#8b6cff";
+    x.fillStyle="#bcb0c9"; x.font="600 30px Outfit"; x.textAlign="left"; x.fillText(name, P, cy+8);
+    const bx=P+360, bw=W-P-120-bx, bh=18; x.fillStyle="#15101d"; rr(x,bx,cy-10,bw,bh,9); x.fill();
+    x.fillStyle=col; rr(x,bx,cy-10,Math.max(10,bw*v/maxv),bh,9); x.fill();
+    x.fillStyle=col; x.font="700 28px Fredoka"; x.textAlign="right"; x.fillText(pr.toFixed(1)+"%", W-P, cy+8); cy+=60; });
+  x.textAlign="center"; x.fillStyle="#7d7090"; x.font="600 23px Outfit"; x.fillText("\u25CF  MO.CO DROP TRACKER  ·  bigsap07.github.io/Mo.co", W/2, Hc-58);
+  cv.toBlob(async(blob)=>{ if(!blob) return;
+    try{ await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]); }catch(e){}
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(d.handle.replace(/[^a-z0-9]+/gi,"_")||"stats")+"_moco.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  },"image/png");
 }
 async function deleteLog(id){
   const t=tokens(), tok=t[id];
