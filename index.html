@@ -85,6 +85,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .fi .who{font-family:var(--m);font-weight:500;color:var(--dim);min-width:78px;max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fi .kt{font-family:var(--d);font-size:9px;font-weight:600;text-transform:uppercase;padding:3px 7px;border-radius:6px;letter-spacing:.03em}
 .fi .dr{margin-left:auto;font-family:var(--m);font-size:10.5px;color:var(--dim);text-align:right}
+.fi .ago{font-family:var(--m);font-size:9.5px;color:var(--dim2);min-width:30px;text-align:right}
 .foot{font-family:var(--m);font-size:12px;color:var(--dim);line-height:1.7;margin-top:20px;text-align:center;letter-spacing:.02em}
 .pulse{font-family:var(--m);font-size:12px;color:var(--txt2);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-left:3px solid var(--cyan);border-radius:12px;padding:11px 14px;margin-bottom:13px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .pulse b{color:var(--txt)}
@@ -330,6 +331,9 @@ function buildChips(){
 const TSHORT={semi:"S",charged:"C",over:"OC",mega:"MC"};
 const TCOLOR=Object.fromEntries(TIERS.map(t=>[t[0],t[2]]));
 const coreLabel=c=>c==="Crit Damage"?"Critical Damage":c;
+function timeAgo(ts){ if(!ts) return ""; const t=new Date(ts).getTime(); if(isNaN(t)) return ""; const s=Math.max(0,(Date.now()-t)/1000);
+  if(s<60) return "now"; if(s<3600) return Math.floor(s/60)+"m"; if(s<86400) return Math.floor(s/3600)+"h"; if(s<604800) return Math.floor(s/86400)+"d";
+  return new Date(ts).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
 function dropsHTML(d){
   if(!d||!d.length) return `<span style="color:var(--dim2)">no drop</span>`;
   return d.map(x=>`<span style="color:${TCOLOR[x.tier]||'#8492a6'};font-weight:600">${esc((TSHORT[x.tier]||"")+" "+coreLabel(x.core))}</span>`).join(`<span style="color:var(--dim2)">, </span>`);
@@ -452,12 +456,12 @@ async function renderBoard(){
 }
 
 async function renderFeed(){
-  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
+  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops,created_at&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
   document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     return `<div class="fi"><span class="who">${esc(r.handle||"anon")}${vbadge(r.handle)}</span>
       <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
-      <span class="dr">${dropsHTML(d)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
+      <span class="dr">${dropsHTML(d)}</span><span class="ago">${timeAgo(r.created_at)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
 }
 
 function activeProfile(){
@@ -547,10 +551,11 @@ async function renderProfile(){
   html+=`<div class="card"><div class="h3">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div>${coreHTML}</div>`;
 
   const tk_=tokens();
-  const feed=(m.recent||[]).map(r=>{
+  let rec=[]; try{ rec=await rest("logs?select=id,difficulty,drops,created_at&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&order=created_at.desc&limit=20"); }catch(e){ rec=m.recent||[]; }
+  const feed=(rec||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     const del=(isSelf && r.id!=null && tk_[r.id])?`<span class="x" title="delete this log" style="margin-left:10px" onclick="deleteLog(${r.id})">×</span>`:"";
-    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span>${del}</div>`;
+    return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span><span class="ago">${timeAgo(r.created_at)}</span>${del}</div>`;
   }).join("");
   html+=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
 
