@@ -125,7 +125,9 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .lb .ld{font-family:var(--m);font-size:11px;color:var(--dim);min-width:62px;text-align:right}
 .lb .luck{font-family:var(--m);font-weight:700;font-size:11px;min-width:42px;text-align:right}
 .lb .lbg{display:inline-flex;gap:4px;flex:none}
-.lb .bch{font-size:11px;line-height:1.4;padding:2px 5px;border-radius:6px}
+.lb .bch{font-size:11px;line-height:1.4;padding:2px 5px;border-radius:6px;cursor:default}
+.tip{position:fixed;transform:translate(-50%,-100%);background:#1a1326;border:1px solid var(--line);color:var(--txt);font-family:var(--m);font-size:11px;font-weight:500;padding:5px 9px;border-radius:7px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:999;white-space:nowrap;box-shadow:0 8px 22px -10px #000}
+.tip.on{opacity:1}
 .card.dim{opacity:.5;transition:opacity .3s}
 .lookrow{display:flex;gap:8px;align-items:center}.lookrow input{flex:1}
 .backlink{font-family:var(--m);font-size:11px;font-weight:600;color:var(--cyan);cursor:pointer;letter-spacing:.02em;text-transform:none;margin-left:auto}
@@ -474,24 +476,36 @@ async function renderBoard(){
     const avg = s.kills ? s.drops/s.kills : 0;
     const luck = commAvg ? (avg/commAvg-1)*100 : 0;
     const lc = luck>2?"#2fd07a":luck<-2?"#ff6b47":"var(--dim)";
-    const bb = boardBadges(s, VERIFIED.has(String(s.handle||"").toLowerCase()));
-    const bbHTML = bb.length?`<span class="lbg">${bb.map(b=>`<span class="bch" style="background:${b[1]}1f" title="${b[2]}">${b[0]}</span>`).join("")}</span>`:"";
+    const bb = boardBadges(s, VERIFIED.has(String(s.handle||"").toLowerCase()), i+1);
+    const bbHTML = bb.length?`<span class="lbg">${bb.map(b=>`<span class="bch" style="background:${b[1]}1f" data-tip="${b[2]}">${b[0]}</span>`).join("")}</span>`:"";
     return `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span>${bbHTML}<span class="luck" style="color:${lc}" title="Drops per kill vs community average">${luck>=0?"+":""}${luck.toFixed(0)}%</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`;
   }).join("") || `<div class="note">No contributors yet.</div>`;
   el.onclick=(ev)=>{ const t=ev.target.closest(".lh[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
 }
-function boardBadges(s, verified){
+function boardBadges(s, verified, rank){
   const out=[], k=s.kills||0, mega=s.mega||0;
-  if(k>=1000) out.push(["👑","#ff3da6","Legend · 1,000 kills"]);
+  if(rank===1) out.push(["🏆","#f5d33b","Champion · #1 contributor"]);
+  if(k>=5000) out.push(["🐋","#34d3ee","Whale · 5,000 kills"]);
+  else if(k>=1000) out.push(["👑","#ff3da6","Legend · 1,000 kills"]);
   else if(k>=500) out.push(["🎖️","#34d3ee","Veteran · 500 kills"]);
   else if(k>=100) out.push(["💯","#c6ff3a","Century · 100 kills"]);
-  if(mega>=5) out.push(["🔮","#c887f7","Mega Hoarder · 5 Mega cores"]);
+  if(mega>=10) out.push(["🌟","#c887f7","Mega Lord · 10 Mega cores"]);
+  else if(mega>=5) out.push(["🔮","#c887f7","Mega Hoarder · 5 Mega cores"]);
   else if(mega>=1) out.push(["💜","#c887f7","First Mega"]);
   if((s.best_multi||0)>=4) out.push(["🎰","#c6ff3a","Jackpot · 4 drops in 1 kill"]);
   if((s.oc||0)>=25) out.push(["⚡","#f5a623","Overcharged · 25 OC cores"]);
   if(verified) out.push(["✅","#c6ff3a","Verified"]);
   return out.slice(0,4);
 }
+(function(){
+  const TIP=document.createElement("div"); TIP.className="tip"; document.body.appendChild(TIP);
+  const show=el=>{ const t=el.getAttribute("data-tip"); if(!t) return; TIP.textContent=t; const r=el.getBoundingClientRect(); TIP.style.left=(r.left+r.width/2)+"px"; TIP.style.top=(r.top-8)+"px"; TIP.classList.add("on"); };
+  const hide=()=>TIP.classList.remove("on");
+  document.addEventListener("mouseover",e=>{ const b=e.target.closest("[data-tip]"); if(b) show(b); });
+  document.addEventListener("mouseout",e=>{ if(e.target.closest("[data-tip]")) hide(); });
+  document.addEventListener("click",e=>{ const b=e.target.closest("[data-tip]"); if(b){ show(b); clearTimeout(TIP._t); TIP._t=setTimeout(hide,1700); } });
+  window.addEventListener("scroll",hide,true);
+})();
 
 async function renderLuckBoard(){
   const el=document.getElementById("luckboard"); if(!el) return;
@@ -568,20 +582,31 @@ async function renderProfile(){
   </div>`;
 
   const T_=m.tiers||{}, S_=m.streaks||{}, vrf=VERIFIED.has(String(h).toLowerCase());
+  const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
+  const bty=m.by_type||{}, chaosK=(bty.chaos||0)+(bty.overcharged_chaos||0)+(bty.megacharged_chaos||0);
+  const rk=m.rank||0;
   const BADGES=[
+    {n:"Rookie",g:"🐣",c:"#aab4c4",e:m.kills>=10,r:"10 kills"},
     {n:"Century",g:"💯",c:"#c6ff3a",e:m.kills>=100,r:"100 kills"},
     {n:"Veteran",g:"🎖️",c:"#34d3ee",e:m.kills>=500,r:"500 kills"},
     {n:"Legend",g:"👑",c:"#ff3da6",e:m.kills>=1000,r:"1,000 kills"},
+    {n:"Whale",g:"🐋",c:"#34d3ee",e:m.kills>=5000,r:"5,000 kills"},
+    {n:"Champion",g:"🏆",c:"#f5d33b",e:rk===1,r:"#1 contributor"},
+    {n:"Podium",g:"🥉",c:"#f5a623",e:rk>0&&rk<=3,r:"top 3 contributor"},
     {n:"First Mega",g:"💜",c:"#c887f7",e:(T_.mega||0)>=1,r:"a Mega core"},
     {n:"Mega Hoarder",g:"🔮",c:"#c887f7",e:(T_.mega||0)>=5,r:"5 Mega cores"},
+    {n:"Mega Lord",g:"🌟",c:"#c887f7",e:(T_.mega||0)>=10,r:"10 Mega cores"},
     {n:"Overcharged",g:"⚡",c:"#f5a623",e:(T_.over||0)>=25,r:"25 OC cores"},
+    {n:"Completionist",g:"🌈",c:"#34d3ee",e:coresHit>=CORES.length,r:"every core type"},
+    {n:"Blessed",g:"🍀",c:"#2fd07a",e:(m.kills>=100&&luck>5),r:"+5 luck @ 100 kills"},
+    {n:"Cursed",g:"🪦",c:"#ff6b47",e:(m.kills>=100&&luck<-5),r:"−5 luck @ 100 kills"},
     {n:"Survivor",g:"🥵",c:"#ff6b47",e:(S_.longest_dry||0)>=20,r:"20-kill dry streak"},
     {n:"Jackpot",g:"🎰",c:"#c6ff3a",e:(S_.best_multi||0)>=4,r:"4 drops, 1 kill"},
-    {n:"Blessed",g:"🍀",c:"#2fd07a",e:(m.kills>=100&&luck>5),r:"+5 luck @ 100 kills"},
+    {n:"Chaos Hunter",g:"🌀",c:"#ff3da6",e:chaosK>0,r:"a Chaos kill"},
     {n:"Verified",g:"✅",c:"#c6ff3a",e:vrf,r:"Discord verified"}
   ];
   const earnedN=BADGES.filter(b=>b.e).length;
-  const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" title="${b.e?"Unlocked":"Locked — needs "+b.r}">
+  const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" data-tip="${b.n} — ${b.e?"unlocked":"locked · "+b.r}">
     <span class="ic" style="background:${b.e?b.c+"22":"#ffffff10"};color:${b.e?b.c:"var(--dim)"}">${b.g}</span>
     <span><span class="bn" style="${b.e?`color:${b.c}`:""}">${b.n}</span><br><span class="br">${b.r}</span></span></div>`).join("");
   html+=`<div class="card"><div class="h3">Badges <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· ${earnedN}/${BADGES.length}</span></div><div class="bgrid">${bHTML}</div></div>`;
