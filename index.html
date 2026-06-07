@@ -54,6 +54,21 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .dl{display:flex;gap:8px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:8px 10px;margin-bottom:8px}
 .dl select{flex:1}
 .dl .x{cursor:pointer;color:var(--dim2);font-family:var(--m);font-size:18px;padding:0 4px;line-height:1}.dl .x:hover{color:var(--bad)}
+.corebtns{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-bottom:11px}
+@media(min-width:460px){.corebtns{grid-template-columns:repeat(4,1fr)}}
+.cbtn{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px;cursor:pointer;font-family:var(--d);font-weight:600;font-size:12px;color:var(--txt2);transition:.12s;text-align:left}
+.cbtn:hover{border-color:var(--cc);color:var(--txt)}
+.cbtn .cd{width:11px;height:11px;border-radius:50%;background:var(--cc);flex:none}
+.cbtn.armed{border-color:var(--cc);color:#fff;box-shadow:0 0 0 1px var(--cc),0 0 18px -7px var(--cc)}
+.thint{font-family:var(--m);font-size:11px;color:var(--dim);margin-bottom:8px}
+.tierbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:13px;opacity:.4;pointer-events:none;transition:opacity .15s}
+.tierbtns.live{opacity:1;pointer-events:auto}
+.tbtn{background:var(--card2);border:1px solid var(--tc);color:var(--tc);border-radius:10px;padding:11px 6px;cursor:pointer;font-family:var(--d);font-weight:700;font-size:11.5px;transition:.12s}
+.tbtn:hover{filter:brightness(1.25)}
+.droplist{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px;min-height:2px}
+.dchip{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-family:var(--m);font-size:12px;font-weight:600}
+.dchip .x{cursor:pointer;color:var(--dim2);font-weight:700;font-size:13px}
+.dchip .x:hover{color:#ff6b47}
 .btn{font-family:var(--d);font-weight:600;letter-spacing:.05em;text-transform:uppercase;border:none;border-radius:11px;padding:12px 18px;cursor:pointer;font-size:13px;transition:.15s}
 .btn.p{background:var(--cyan);color:#0b0710;box-shadow:0 4px 18px rgba(198,255,58,.26)}.btn.p:hover{filter:brightness(1.06)}.btn.p:disabled{opacity:.45;box-shadow:none}
 .btn.g{background:var(--card2);color:var(--dim);border:1px solid var(--line2)}.btn.g:hover{color:var(--txt);border-color:var(--cyan)}
@@ -200,8 +215,11 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
     </div>
     <div class="card">
       <div class="h3">Drops this kill</div>
-      <div id="drops"></div>
-      <button class="btn g mini" onclick="addDrop()" style="margin-top:2px">+ add drop</button>
+      <p class="note" style="margin:-2px 0 12px">Tap a core, then its charge tier — repeat for each drop. No taps = a 0-drop kill.</p>
+      <div class="corebtns" id="coreBtns"></div>
+      <div class="thint" id="tierHint">↑ Pick a core first</div>
+      <div class="tierbtns" id="tierBtns"></div>
+      <div class="droplist" id="dropChips"></div>
       <div class="bar">
         <button class="btn p" id="logBtn" onclick="logKill(false)">Log kill</button>
         <button class="btn g" onclick="logKill(true)">+1 no-drop</button>
@@ -301,6 +319,7 @@ const CORES=["Attack Speed","Healing","Crit Damage","Damage","Cooldown","Max Hea
 const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
 
 let logKT="normal", viewKT="all", lookupHandle=null;
+let armedCore=null, dropList=[];
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
@@ -388,11 +407,30 @@ function dropsHTML(d){
   if(!d||!d.length) return `<span style="color:var(--dim2)">no drop</span>`;
   return d.map(x=>`<span style="color:${TCOLOR[x.tier]||'#8492a6'};font-weight:600">${esc((TSHORT[x.tier]||"")+" "+coreLabel(x.core))}</span>`).join(`<span style="color:var(--dim2)">, </span>`);
 }
-function addDrop(){
-  document.getElementById("drops").insertAdjacentHTML("beforeend",
-   `<div class="dl"><select class="dc">${CORES.map(c=>`<option value="${c}">${coreLabel(c)}</option>`).join("")}</select>
-    <select class="dt">${TIERS.map(t=>`<option value="${t[0]}">${t[1]}</option>`).join("")}</select>
-    <span class="x" onclick="this.parentElement.remove()">×</span></div>`);
+function buildLogInputs(){
+  armedCore=null;
+  document.getElementById("coreBtns").innerHTML=CORES.map(c=>`<button class="cbtn" data-core="${c}" style="--cc:${CORE_COLOR[c]||'#8492a6'}" onclick="armCore('${c}')"><span class="cd"></span>${coreLabel(c)}</button>`).join("");
+  document.getElementById("tierBtns").innerHTML=TIERS.map(t=>`<button class="tbtn" data-tier="${t[0]}" style="--tc:${t[2]}" onclick="addDropTap('${t[0]}')">${t[1]}</button>`).join("");
+  document.getElementById("tierBtns").classList.remove("live");
+  document.getElementById("tierHint").textContent="↑ Pick a core first";
+  renderChips();
+}
+function armCore(c){
+  armedCore=(armedCore===c)?null:c;
+  document.querySelectorAll("#coreBtns .cbtn").forEach(b=>b.classList.toggle("armed",b.dataset.core===armedCore));
+  document.getElementById("tierBtns").classList.toggle("live",!!armedCore);
+  document.getElementById("tierHint").textContent=armedCore?`Charge tier for ${coreLabel(armedCore)}:`:"↑ Pick a core first";
+}
+function addDropTap(t){
+  if(!armedCore) return;
+  dropList.push({core:armedCore,tier:t});
+  armCore(armedCore);
+  renderChips();
+}
+function removeDrop(i){ dropList.splice(i,1); renderChips(); }
+function renderChips(){
+  const el=document.getElementById("dropChips"); if(!el) return;
+  el.innerHTML=dropList.map((d,i)=>`<span class="dchip" style="color:${TCOLOR[d.tier]||'#8492a6'}">${esc((TSHORT[d.tier]||"")+" "+coreLabel(d.core))}<span class="x" onclick="removeDrop(${i})">×</span></span>`).join("");
 }
 function celebrate(level){
   const big=level==="mega";
@@ -434,7 +472,7 @@ async function logKill(noDrop){
   const handle=document.getElementById("handle").value.trim();
   try{ localStorage.setItem("moco_handle",handle); }catch(e){}
   let drops=[];
-  if(!noDrop) drops=[...document.querySelectorAll("#drops .dl")].map(d=>({core:d.querySelector(".dc").value,tier:d.querySelector(".dt").value}));
+  if(!noDrop) drops=dropList.slice();
   const btn=document.getElementById("logBtn"),st=document.getElementById("status"); btn.disabled=true; st.textContent="saving…";
   const token=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random());
   try{
@@ -443,7 +481,7 @@ async function logKill(noDrop){
     if(!r.ok) throw new Error(await r.text());
     const row=await r.json(); const id=Array.isArray(row)&&row[0]?row[0].id:null;
     if(id!=null){ const t=tokens(); t[id]=token; saveTokens(t); }
-    document.getElementById("drops").innerHTML="";
+    dropList=[]; buildLogInputs();
     st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1400);
     if(drops.some(d=>d.tier==="mega")) celebrate("mega"); else if(drops.some(d=>d.tier==="over")) celebrate("over");
     await load();
@@ -619,6 +657,11 @@ async function renderProfile(){
     <button class="btn g mini" style="margin-top:12px" onclick="shareCard()">Share stat card</button>
   </div>`;
 
+  let pByType={}, coreTiers={};
+  try{ const prows=await rest("logs?select=difficulty,drop_count,drops&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&limit=20000");
+    (prows||[]).forEach(r=>{ const t=r.difficulty||"normal"; (pByType[t]=pByType[t]||{k:0,wd:0}); pByType[t].k++; if((r.drop_count||0)>0) pByType[t].wd++;
+      (Array.isArray(r.drops)?r.drops:[]).forEach(x=>{ if(x&&x.core) (coreTiers[x.core]=coreTiers[x.core]||new Set()).add(x.tier); }); }); }catch(e){}
+  const fullCore=Object.values(coreTiers).some(s=>s.has("semi")&&s.has("charged")&&s.has("over")&&s.has("mega"));
   const T_=m.tiers||{}, S_=m.streaks||{}, vrf=VERIFIED.has(String(h).toLowerCase());
   const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
   const bty=m.by_type||{};
@@ -636,6 +679,7 @@ async function renderProfile(){
     {n:"Mega Lord",g:"🌟",c:"#c887f7",e:(T_.mega||0)>=10,r:"10 Mega cores"},
     {n:"Overcharged",g:"⚡",c:"#f5a623",e:(T_.over||0)>=25,r:"25 OC cores"},
     {n:"Completionist",g:"🌈",c:"#34d3ee",e:coresHit>=CORES.length,r:"every core type"},
+    {n:"Ultimate Collector",g:"🏅",c:"#f5d33b",e:fullCore,r:"all 4 tiers of one core"},
     {n:"Blessed",g:"🍀",c:"#2fd07a",e:(m.kills>=100&&luck>5),r:"+5 luck @ 100 kills"},
     {n:"Cursed",g:"🪦",c:"#ff6b47",e:(m.kills>=100&&luck<-5),r:"−5 luck @ 100 kills"},
     {n:"Survivor",g:"🥵",c:"#ff6b47",e:(S_.longest_dry||0)>=15,r:"15-kill dry streak"},
@@ -663,9 +707,6 @@ async function renderProfile(){
     <p class="note" style="margin-top:2px">Luck = your drop rate (${(rate*100).toFixed(1)}%) minus community (${(cRate*100).toFixed(1)}%), in points, across all kill types combined — see the per-type split below. Dry streak = kills in a row with no drop.</p>
   </div>`;
 
-  let pByType={};
-  try{ const prows=await rest("logs?select=difficulty,drop_count&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&limit=20000");
-    (prows||[]).forEach(r=>{ const t=r.difficulty||"normal"; (pByType[t]=pByType[t]||{k:0,wd:0}); pByType[t].k++; if((r.drop_count||0)>0) pByType[t].wd++; }); }catch(e){}
   for(const k of KT){ const t=k[0]; if(pByType[t] && !(t in COMMKT)){ try{ const s=await rpc("get_stats",{p_kt:t}); COMMKT[t]={kills:s.kills||0,wd:s.with_drops||0}; }catch(e){ COMMKT[t]={kills:0,wd:0}; } } }
   const lt=KT.filter(k=>pByType[k[0]]).map(k=>{
     const t=k[0], p=pByType[t], pr=p.k?p.wd/p.k:0;
@@ -761,5 +802,5 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="me") renderProfile();
 });
 if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
-buildChips(); addDrop(); renderLog(); initAuth(); load();
+buildChips(); buildLogInputs(); renderLog(); initAuth(); load();
 </script>
