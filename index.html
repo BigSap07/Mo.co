@@ -27,6 +27,7 @@ body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--m);font-varian
 .mark{width:48px;height:48px;border-radius:14px;flex:0 0 auto;display:grid;place-items:center;
   background:linear-gradient(150deg,#1d1428,#120c1a);border:1px solid var(--line2);box-shadow:0 0 22px rgba(198,255,58,.16)}
 .mark svg{width:23px;height:23px;stroke:var(--cyan)}
+.brandlogo{height:40px;width:auto;flex:0 0 auto;filter:invert(1) drop-shadow(0 0 14px rgba(198,255,58,.25))}
 .ttl{font-family:var(--d);font-size:23px;font-weight:700;letter-spacing:.005em;line-height:1}
 .ttl b{color:var(--cyan)}
 .tag{font-family:var(--m);font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-top:6px}
@@ -55,9 +56,9 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .dl select{flex:1}
 .dl .x{cursor:pointer;color:var(--dim2);font-family:var(--m);font-size:18px;padding:0 4px;line-height:1}.dl .x:hover{color:var(--bad)}
 .corebtns{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:11px}
-.cbtn{background:color-mix(in srgb,var(--cc,#8492a6) 9%,var(--card2));border:1px solid color-mix(in srgb,var(--cc,#8492a6) 24%,var(--line));border-radius:11px;padding:9px 3px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.12s}
+.cbtn{background:color-mix(in srgb,var(--cc,#8492a6) 15%,var(--card2));border:1px solid color-mix(in srgb,var(--cc,#8492a6) 34%,var(--line));border-radius:11px;padding:9px 3px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.12s}
 .cbtn:hover{border-color:color-mix(in srgb,var(--cc,#8492a6) 55%,transparent)}
-.cbtn.armed{background:color-mix(in srgb,var(--cc,#8492a6) 18%,var(--card2));border-color:var(--cc,#fff);box-shadow:0 0 0 1px var(--cc,#fff),0 0 16px -5px var(--cc,#fff)}
+.cbtn.armed{background:color-mix(in srgb,var(--cc,#8492a6) 28%,var(--card2));border-color:var(--cc,#fff);box-shadow:0 0 0 1px var(--cc,#fff),0 0 16px -5px var(--cc,#fff)}
 .cbtn .cbi{display:inline-flex}.cbtn .cbi .gemsvg{width:28px;height:33px}
 .cbtn .cbn{font-family:var(--d);font-weight:600;font-size:9.5px;color:var(--txt2);text-align:center;line-height:1.05}
 .gemsvg{width:30px;height:36px;filter:drop-shadow(0 0 5px var(--gc))}
@@ -66,8 +67,8 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .thint{font-family:var(--m);font-size:11px;color:var(--dim);margin-bottom:8px}
 .tierbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:13px;opacity:.4;pointer-events:none;transition:opacity .15s}
 .tierbtns.live{opacity:1;pointer-events:auto}
-.tbtn{background:var(--card2);border:1px solid var(--tc);color:var(--tc);border-radius:10px;padding:11px 6px;cursor:pointer;font-family:var(--d);font-weight:700;font-size:11.5px;transition:.12s}
-.tbtn:hover{filter:brightness(1.25)}
+.tbtn{background:color-mix(in srgb,var(--tc) 18%,var(--card2));border:1px solid color-mix(in srgb,var(--tc) 52%,var(--line));color:var(--tc);border-radius:10px;padding:11px 6px;cursor:pointer;font-family:var(--d);font-weight:700;font-size:11.5px;transition:.12s}
+.tbtn:hover{background:color-mix(in srgb,var(--tc) 32%,var(--card2));border-color:var(--tc)}
 .droplist{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px;min-height:2px}
 .dchip{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 9px 4px 6px;font-family:var(--m);font-size:12px;font-weight:600}
 .dchip .gemsvg{width:16px;height:19px}
@@ -162,10 +163,6 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .hi .hx{font-size:11px;color:var(--txt2);line-height:1.5}
 .ci .cd{font-family:var(--m);font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);margin-bottom:3px}
 .ci .ctx{font-size:11.5px;color:var(--txt2);line-height:1.45}
-@media(min-width:1360px){
-  .chlog{position:fixed;top:18px;right:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
-  .howto{position:fixed;top:18px;left:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
-}
 @media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}.corebtns{grid-template-columns:repeat(2,1fr)}.lb{gap:7px}.lb .ld{display:none}.lb .lbg .bch:nth-child(n+3){display:none}.lb .lk{font-size:11px}.lb .lvtag{font-size:9px;padding:2px 5px}}
 .rankcard{display:flex;align-items:center;gap:18px}
 .rkemb{width:64px;height:64px;flex:none;border-radius:16px;display:grid;place-items:center;border:2px solid var(--tc);box-shadow:0 0 22px -6px var(--tc)}
@@ -196,9 +193,9 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 
 <div class="wrap">
   <div class="hd">
-    <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M13 2 L5 13 h5 l-1 9 8.5-12.5 H10 z" stroke-linejoin="round"/></svg></div>
+    <img class="brandlogo" src="./moco_logo_primary.png" alt="mo.co">
     <div>
-      <div class="ttl">mo.co <b>Drop Tracker</b></div>
+      <div class="ttl"><b>Drop Tracker</b></div>
       <div class="tag">Community pooled drop rates</div>
     </div>
     <div class="live"><div class="n" id="liveN">—</div><div class="l">total kills</div></div>
@@ -334,6 +331,8 @@ const CORES=["Damage","Crit Damage","Attack Speed","Cooldown","Healing","Healing
 const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e","Max Health":"#2fd07a","Attack Speed":"#f5d33b","Cooldown":"#aab4c4","Healing Received":"#34d3ee","Dodge":"#a06bff"};
 // Fankit art: drop ALL 41 fankit PNGs (unchanged names) into one repo folder, then set CORE_ICON_BASE to that folder (e.g. "assets/cores/"). Falls back to SVG gems automatically.
 const CORE_ICON_BASE="./";
+const LOGO_SRC="./moco_logo_primary.png";
+function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
 
 let logKT="normal", viewKT="all", lookupHandle=null;
 let armedCore=null, dropList=[];
@@ -782,7 +781,9 @@ async function shareCard(){
   g=x.createRadialGradient(-40,Hc+40,0,-40,Hc+40,720); g.addColorStop(0,"rgba(198,255,58,.13)"); g.addColorStop(1,"rgba(198,255,58,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
   x.strokeStyle="rgba(198,255,58,.22)"; x.lineWidth=2; rr(x,20,20,W-40,Hc-40,30); x.stroke();
   x.textBaseline="alphabetic"; x.textAlign="left";
-  x.fillStyle="#c6ff3a"; x.font="600 22px Outfit"; x.fillText("M O . C O   ·   D R O P   T R A C K E R", P, 102);
+  const logo=await loadImg(LOGO_SRC).catch(()=>null);
+  if(logo){ const lh=58, lw=lh*logo.width/logo.height; x.save(); x.filter="invert(1)"; x.drawImage(logo,P,52,lw,lh); x.restore(); x.fillStyle="#c6ff3a"; x.font="600 22px Outfit"; x.textBaseline="middle"; x.fillText("DROP TRACKER", P+lw+20, 52+lh/2+2); x.textBaseline="alphabetic"; }
+  else { x.fillStyle="#c6ff3a"; x.font="600 22px Outfit"; x.fillText("M O . C O   ·   D R O P   T R A C K E R", P, 102); }
   x.fillStyle="#f3eefa"; x.font="700 72px Fredoka"; const hw=x.measureText(d.handle).width; x.fillText(d.handle, P, 188);
   if(d.verified){ x.fillStyle="#c6ff3a"; x.font="700 54px Fredoka"; x.fillText("\u2713", P+hw+20, 188); }
   if(d.rank){ x.fillStyle="#7d7090"; x.font="600 26px Outfit"; x.fillText("RANK #"+d.rank+" / "+d.contributors, P, 230); }
