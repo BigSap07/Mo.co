@@ -119,7 +119,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .board{display:flex;flex-direction:column;gap:7px}
 .lb{display:flex;align-items:center;gap:11px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
 .lb .rk{font-family:var(--d);font-weight:600;font-size:13px;color:var(--cyan);min-width:20px;text-align:center}
-.lb .lh{font-family:var(--d);font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2);cursor:pointer}
+.lb .lh{font-family:var(--d);font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--txt2);cursor:pointer}
 .lb .lh:hover{color:var(--cyan)}
 .lb .lk{margin-left:auto;font-family:var(--m);font-size:12px;font-weight:600;color:var(--txt)}
 .lb .ld{font-family:var(--m);font-size:11px;color:var(--dim);min-width:62px;text-align:right}
@@ -146,6 +146,30 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   .howto{position:fixed;top:18px;left:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
 }
 @media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}}
+.rankcard{display:flex;align-items:center;gap:18px}
+.rkemb{width:64px;height:64px;flex:none;border-radius:16px;display:grid;place-items:center;border:2px solid var(--tc);box-shadow:0 0 22px -6px var(--tc)}
+.rklv{font-family:var(--d);font-weight:700;font-size:28px;color:var(--tc);line-height:1}
+.rkmeta{flex:1;min-width:0}
+.rktier{font-family:var(--d);font-weight:700;font-size:18px;letter-spacing:.02em}
+.rksub{font-family:var(--m);font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.rkbar{height:8px;background:#ffffff10;border-radius:5px;overflow:hidden}
+.rkbar span{display:block;height:100%;border-radius:5px;transition:width .5s}
+.rknext{font-family:var(--m);font-size:10px;color:var(--dim2);margin-top:5px}
+.lb .lvtag{font-family:var(--d);font-weight:700;font-size:9.5px;padding:2px 6px;border-radius:6px;flex:none}
+.fi.fl-mega{background:linear-gradient(90deg,#c887f718,var(--card2));animation:flpulse 2.4s ease-in-out infinite}
+.fi.fl-jack{background:linear-gradient(90deg,#c6ff3a14,var(--card2));box-shadow:inset 0 0 0 1px #c6ff3a3a}
+@keyframes flpulse{0%,100%{box-shadow:inset 0 0 0 1px #c887f73a,0 0 8px -6px #c887f7}50%{box-shadow:inset 0 0 0 1px #c887f76a,0 0 18px -4px #c887f7}}
+.fi .flag{font-family:var(--d);font-weight:700;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:5px;flex:none}
+@media(min-width:900px){
+  .wrap{max-width:1080px}
+  .seg{display:inline-flex}
+  .seg button{flex:0 0 auto;padding:11px 24px}
+  #p-log.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  #p-stats.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  #p-me.on #profile{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  #p-log.on>.card,#p-stats.on>.card,#p-stats.on>.pulse,#p-me.on #profile>.card{margin-bottom:0}
+  .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide{grid-column:1/-1}
+}
 </style>
 
 <div class="wrap">
@@ -189,7 +213,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 
   <div class="panel" id="p-stats">
     <div class="pulse" id="pulse"></div>
-    <div class="card">
+    <div class="card wide">
       <div class="h3">View kill type</div>
       <div class="chips" id="filtChips"></div>
       <p class="note" id="cmpNote" style="margin-top:12px"></p>
@@ -205,7 +229,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
     <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
     <div class="card"><div class="h3">Top contributors</div><p class="note" style="margin:-4px 0 12px">Luck % = drops per kill vs the community average.</p><div class="board" id="board"></div></div>
     <div class="card"><div class="h3">Mega Hall of Fame <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· min 50 kills</span></div><p class="note" style="margin:-4px 0 12px">Megacharged cores per 100 kills. Score = MC / 100 kills · sub = mega / total kills.</p><div id="luckboard"></div></div>
-    <div class="card"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
+    <div class="card wide"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
   </div>
 
   <div class="panel" id="p-me">
@@ -478,7 +502,9 @@ async function renderBoard(){
     const lc = luck>2?"#2fd07a":luck<-2?"#ff6b47":"var(--dim)";
     const bb = boardBadges(s, VERIFIED.has(String(s.handle||"").toLowerCase()), i+1);
     const bbHTML = bb.length?`<span class="lbg">${bb.map(b=>`<span class="bch" style="background:${b[1]}1f" data-tip="${b[2]}">${b[0]}</span>`).join("")}</span>`:"";
-    return `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span>${bbHTML}<span class="luck" style="color:${lc}" title="Drops per kill vs community average">${luck>=0?"+":""}${luck.toFixed(0)}%</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`;
+    const lv=hunterLevel(levelScore({kills:s.kills,drops:s.drops,mega:s.mega,over:s.oc,best_multi:s.best_multi})), lvt=rankTier(lv);
+    const lvHTML=`<span class="lvtag" style="background:${lvt[1]}1f;color:${lvt[1]}" data-tip="${lvt[0]} · Hunter Lv ${lv}">${lv}</span>`;
+    return `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span>${lvHTML}${bbHTML}<span class="luck" style="color:${lc}" title="Drops per kill vs community average">${luck>=0?"+":""}${luck.toFixed(0)}%</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`;
   }).join("") || `<div class="note">No contributors yet.</div>`;
   el.onclick=(ev)=>{ const t=ev.target.closest(".lh[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
 }
@@ -523,9 +549,12 @@ async function renderFeed(){
   let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops,created_at&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
   document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
-    return `<div class="fi"><span class="who">${esc(r.handle||"anon")}${vbadge(r.handle)}</span>
+    const mega=d.some(x=>x&&x.tier==="mega"), jack=d.length>=4;
+    const fcls=mega?" fl-mega":(jack?" fl-jack":"");
+    const flag=mega?`<span class="flag" style="background:#c887f726;color:#c887f7">⚡ Mega</span>`:(jack?`<span class="flag" style="background:#c6ff3a22;color:#c6ff3a">Jackpot</span>`:"");
+    return `<div class="fi${fcls}"><span class="who">${esc(r.handle||"anon")}${vbadge(r.handle)}</span>
       <span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span>
-      <span class="dr">${dropsHTML(d)}</span><span class="ago">${timeAgo(r.created_at)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
+      <span class="dr">${dropsHTML(d)}</span>${flag}<span class="ago">${timeAgo(r.created_at)}</span></div>`;}).join("") || `<div class="note">No kills logged yet.</div>`;
 }
 
 function activeProfile(){
@@ -549,6 +578,9 @@ function wilson(pos,n){
   const c=(p+z*z/(2*n))/d, m=(z*Math.sqrt(p*(1-p)/n+z*z/(4*n*n)))/d;
   return [Math.max(0,c-m),Math.min(1,c+m)];
 }
+function hunterLevel(score){ return Math.max(1, Math.floor(Math.sqrt(Math.max(0,score))/1.6)); }
+function rankTier(l){ if(l>=80)return["Mythic","#ff3da6"]; if(l>=55)return["Legend","#c887f7"]; if(l>=35)return["Master","#f5a623"]; if(l>=20)return["Elite","#34d3ee"]; if(l>=10)return["Veteran","#c6ff3a"]; if(l>=5)return["Hunter","#2fd07a"]; return["Rookie","#aab4c4"]; }
+function levelScore(c){ return (c.kills||0)+(c.drops||0)+((c.mega||0)*40)+((c.over||0)*8)+((c.best_multi||0)*20); }
 async function renderProfile(){
   const wrap=document.getElementById("profile");
   const h=activeProfile();
@@ -568,7 +600,7 @@ async function renderProfile(){
   const st=m.streaks||{};
   const who=isSelf?"Your":"Their";
 
-  let html=`<div class="card">
+  let html=`<div class="card wide">
     <div class="h3">${esc(h)}${vbadge(h)}${m.rank?` · rank #${m.rank} / ${m.contributors}`:``}${back}</div>
     <div class="k4">
       <div class="kpi"><div class="l">Kills</div><div class="v c">${m.kills.toLocaleString()}</div></div>
@@ -611,7 +643,7 @@ async function renderProfile(){
   const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" data-tip="${b.n} — ${b.e?"unlocked":"locked · "+b.r}">
     <span class="ic" style="background:${b.e?b.c+"22":"#ffffff10"};color:${b.e?b.c:"var(--dim)"}">${b.g}</span>
     <span><span class="bn" style="${b.e?`color:${b.c}`:""}">${b.n}</span><br><span class="br">${b.r}</span></span></div>`).join("");
-  html+=`<div class="card"><div class="h3">Badges <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· ${earnedN}/${BADGES.length}</span></div><div class="bgrid">${bHTML}</div></div>`;
+  html+=`<div class="card wide"><div class="h3">Badges <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· ${earnedN}/${BADGES.length}</span></div><div class="bgrid">${bHTML}</div></div>`;
 
   html+=`<div class="card">
     <div class="h3">Luck &amp; streaks</div>
@@ -664,6 +696,10 @@ async function renderProfile(){
   }).join("");
   html+=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
 
+  const lvScore=levelScore({kills:m.kills,drops:m.drops,mega:T_.mega,over:T_.over,best_multi:S_.best_multi});
+  const lvl=hunterLevel(lvScore), tr=rankTier(lvl);
+  const cur=Math.pow(lvl*1.6,2), nxt=Math.pow((lvl+1)*1.6,2), prog=Math.max(0,Math.min(1,(lvScore-cur)/(nxt-cur)));
+  html=`<div class="card wide rankcard"><div class="rkemb" style="--tc:${tr[1]};background:${tr[1]}1a"><div class="rklv">${lvl}</div></div><div class="rkmeta"><div class="rktier" style="color:${tr[1]}">${tr[0]}</div><div class="rksub">Hunter Rank · Lv ${lvl}</div><div class="rkbar"><span style="width:${(prog*100).toFixed(0)}%;background:${tr[1]}"></span></div><div class="rknext">${Math.max(0,Math.ceil(nxt-lvScore)).toLocaleString()} XP to Lv ${lvl+1}</div></div></div>`+html;
   wrap.innerHTML=html;
 }
 function rr(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath();}
