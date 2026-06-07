@@ -583,7 +583,7 @@ async function renderProfile(){
 
   const T_=m.tiers||{}, S_=m.streaks||{}, vrf=VERIFIED.has(String(h).toLowerCase());
   const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
-  const bty=m.by_type||{}, chaosK=(bty.chaos||0)+(bty.overcharged_chaos||0)+(bty.megacharged_chaos||0);
+  const bty=m.by_type||{};
   const rk=m.rank||0;
   const BADGES=[
     {n:"Rookie",g:"🐣",c:"#aab4c4",e:m.kills>=10,r:"10 kills"},
@@ -600,9 +600,13 @@ async function renderProfile(){
     {n:"Completionist",g:"🌈",c:"#34d3ee",e:coresHit>=CORES.length,r:"every core type"},
     {n:"Blessed",g:"🍀",c:"#2fd07a",e:(m.kills>=100&&luck>5),r:"+5 luck @ 100 kills"},
     {n:"Cursed",g:"🪦",c:"#ff6b47",e:(m.kills>=100&&luck<-5),r:"−5 luck @ 100 kills"},
-    {n:"Survivor",g:"🥵",c:"#ff6b47",e:(S_.longest_dry||0)>=20,r:"20-kill dry streak"},
+    {n:"Survivor",g:"🥵",c:"#ff6b47",e:(S_.longest_dry||0)>=15,r:"15-kill dry streak"},
     {n:"Jackpot",g:"🎰",c:"#c6ff3a",e:(S_.best_multi||0)>=4,r:"4 drops, 1 kill"},
-    {n:"Chaos Hunter",g:"🌀",c:"#ff3da6",e:chaosK>0,r:"a Chaos kill"},
+    {n:"OC Slayer",g:"🗡️",c:"#f5a623",e:(bty.overcharged||0)>=25,r:"25 OC kills"},
+    {n:"MC Slayer",g:"⚔️",c:"#c887f7",e:(bty.megacharged||0)>=25,r:"25 MC kills"},
+    {n:"Chaos Hunter",g:"🌀",c:"#ff6b47",e:(bty.chaos||0)>=1,r:"a Chaos kill"},
+    {n:"OC Chaos",g:"🌪️",c:"#ff9a3c",e:(bty.overcharged_chaos||0)>=1,r:"an OC Chaos kill"},
+    {n:"MC Chaos",g:"☄️",c:"#e85aff",e:(bty.megacharged_chaos||0)>=1,r:"an MC Chaos kill"},
     {n:"Verified",g:"✅",c:"#c6ff3a",e:vrf,r:"Discord verified"}
   ];
   const earnedN=BADGES.filter(b=>b.e).length;
