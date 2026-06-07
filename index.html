@@ -494,7 +494,6 @@ function boardBadges(s, verified, rank){
   else if(mega>=1) out.push(["💜","#c887f7","First Mega"]);
   if((s.best_multi||0)>=4) out.push(["🎰","#c6ff3a","Jackpot · 4 drops in 1 kill"]);
   if((s.oc||0)>=25) out.push(["⚡","#f5a623","Overcharged · 25 OC cores"]);
-  if(verified) out.push(["✅","#c6ff3a","Verified"]);
   return out.slice(0,4);
 }
 (function(){
@@ -606,8 +605,7 @@ async function renderProfile(){
     {n:"MC Slayer",g:"⚔️",c:"#c887f7",e:(bty.megacharged||0)>=25,r:"25 MC kills"},
     {n:"Chaos Hunter",g:"🌀",c:"#ff6b47",e:(bty.chaos||0)>=1,r:"a Chaos kill"},
     {n:"OC Chaos",g:"🌪️",c:"#ff9a3c",e:(bty.overcharged_chaos||0)>=1,r:"an OC Chaos kill"},
-    {n:"MC Chaos",g:"☄️",c:"#e85aff",e:(bty.megacharged_chaos||0)>=1,r:"an MC Chaos kill"},
-    {n:"Verified",g:"✅",c:"#c6ff3a",e:vrf,r:"Discord verified"}
+    {n:"MC Chaos",g:"☄️",c:"#e85aff",e:(bty.megacharged_chaos||0)>=1,r:"an MC Chaos kill"}
   ];
   const earnedN=BADGES.filter(b=>b.e).length;
   const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" data-tip="${b.n} — ${b.e?"unlocked":"locked · "+b.r}">
