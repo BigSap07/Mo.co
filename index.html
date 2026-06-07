@@ -145,7 +145,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   .chlog{position:fixed;top:18px;right:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
   .howto{position:fixed;top:18px;left:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
 }
-@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}}
+@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}.lb{gap:7px}.lb .ld{display:none}.lb .lbg .bch:nth-child(n+3){display:none}.lb .lk{font-size:11px}.lb .lvtag{font-size:9px;padding:2px 5px}}
 .rankcard{display:flex;align-items:center;gap:18px}
 .rkemb{width:64px;height:64px;flex:none;border-radius:16px;display:grid;place-items:center;border:2px solid var(--tc);box-shadow:0 0 22px -6px var(--tc)}
 .rklv{font-family:var(--d);font-weight:700;font-size:28px;color:var(--tc);line-height:1}
@@ -502,7 +502,7 @@ async function renderBoard(){
     const lc = luck>2?"#2fd07a":luck<-2?"#ff6b47":"var(--dim)";
     const bb = boardBadges(s, VERIFIED.has(String(s.handle||"").toLowerCase()), i+1);
     const bbHTML = bb.length?`<span class="lbg">${bb.map(b=>`<span class="bch" style="background:${b[1]}1f" data-tip="${b[2]}">${b[0]}</span>`).join("")}</span>`:"";
-    const lv=hunterLevel(levelScore({kills:s.kills,drops:s.drops,mega:s.mega,over:s.oc,best_multi:s.best_multi})), lvt=rankTier(lv);
+    const lv=hunterLevel(levelScore({kills:s.kills,drops:s.drops,mega:s.mega,over:s.oc,best_multi:s.best_multi,with_drops:s.with_drops})), lvt=rankTier(lv);
     const lvHTML=`<span class="lvtag" style="background:${lvt[1]}1f;color:${lvt[1]}" data-tip="${lvt[0]} · Hunter Lv ${lv}">${lv}</span>`;
     return `<div class="lb"><span class="rk">${i+1}</span><span class="lh" data-h="${esc(s.handle||"")}">${esc(s.handle||"anon")}${vbadge(s.handle)}</span>${lvHTML}${bbHTML}<span class="luck" style="color:${lc}" title="Drops per kill vs community average">${luck>=0?"+":""}${luck.toFixed(0)}%</span><span class="lk">${s.kills} kills</span><span class="ld">${s.drops} drops</span></div>`;
   }).join("") || `<div class="note">No contributors yet.</div>`;
@@ -580,7 +580,14 @@ function wilson(pos,n){
 }
 function hunterLevel(score){ return Math.max(1, Math.floor(Math.sqrt(Math.max(0,score))/1.6)); }
 function rankTier(l){ if(l>=80)return["Mythic","#ff3da6"]; if(l>=55)return["Legend","#c887f7"]; if(l>=35)return["Master","#f5a623"]; if(l>=20)return["Elite","#34d3ee"]; if(l>=10)return["Veteran","#c6ff3a"]; if(l>=5)return["Hunter","#2fd07a"]; return["Rookie","#aab4c4"]; }
-function levelScore(c){ return (c.kills||0)+(c.drops||0)+((c.mega||0)*40)+((c.over||0)*8)+((c.best_multi||0)*20); }
+function levelScore(c){
+  const kills=c.kills||0, drops=c.drops||0, mega=c.mega||0, over=c.over||0, bm=c.best_multi||0;
+  const wd=(c.with_drops!=null)?c.with_drops:0, rate=kills?wd/kills:0;
+  let s = kills + drops;                         // grind floor — playing always progresses you
+  s += mega*100 + over*15 + bm*40;               // rare RNG pulls weigh heavily
+  s += Math.max(0,(rate-0.40)) * kills * 2.5;    // a hot drop rate (your luck) over volume
+  return Math.round(s);
+}
 async function renderProfile(){
   const wrap=document.getElementById("profile");
   const h=activeProfile();
@@ -696,10 +703,10 @@ async function renderProfile(){
   }).join("");
   html+=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
 
-  const lvScore=levelScore({kills:m.kills,drops:m.drops,mega:T_.mega,over:T_.over,best_multi:S_.best_multi});
+  const lvScore=levelScore({kills:m.kills,drops:m.drops,mega:T_.mega,over:T_.over,best_multi:S_.best_multi,with_drops:m.with_drops});
   const lvl=hunterLevel(lvScore), tr=rankTier(lvl);
   const cur=Math.pow(lvl*1.6,2), nxt=Math.pow((lvl+1)*1.6,2), prog=Math.max(0,Math.min(1,(lvScore-cur)/(nxt-cur)));
-  html=`<div class="card wide rankcard"><div class="rkemb" style="--tc:${tr[1]};background:${tr[1]}1a"><div class="rklv">${lvl}</div></div><div class="rkmeta"><div class="rktier" style="color:${tr[1]}">${tr[0]}</div><div class="rksub">Hunter Rank · Lv ${lvl}</div><div class="rkbar"><span style="width:${(prog*100).toFixed(0)}%;background:${tr[1]}"></span></div><div class="rknext">${Math.max(0,Math.ceil(nxt-lvScore)).toLocaleString()} XP to Lv ${lvl+1}</div></div></div>`+html;
+  html=`<div class="card wide rankcard"><div class="rkemb" style="--tc:${tr[1]};background:${tr[1]}1a" data-tip="Level blends grind (kills/drops) with luck — Mega &amp; OC pulls and a hot drop rate boost it"><div class="rklv">${lvl}</div></div><div class="rkmeta"><div class="rktier" style="color:${tr[1]}">${tr[0]}</div><div class="rksub">Hunter Rank · Lv ${lvl}</div><div class="rkbar"><span style="width:${(prog*100).toFixed(0)}%;background:${tr[1]}"></span></div><div class="rknext">${Math.max(0,Math.ceil(nxt-lvScore)).toLocaleString()} XP to Lv ${lvl+1}</div></div></div>`+html;
   wrap.innerHTML=html;
 }
 function rr(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath();}
