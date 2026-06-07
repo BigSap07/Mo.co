@@ -483,14 +483,11 @@ function celebrate(level){
 async function renderPulse(){
   const el=document.getElementById("pulse"); if(!el) return;
   const since=new Date(); since.setHours(0,0,0,0);
-  let rows=[]; try{ rows=await rest("logs?select=handle,drop_count&hidden=is.false&created_at=gte."+encodeURIComponent(since.toISOString())+"&limit=5000"); }catch(e){ el.innerHTML=""; return; }
-  const n=rows.length;
+  let p=null; try{ p=await rpc("get_pulse",{p_since:since.toISOString()}); }catch(e){ el.innerHTML=""; return; }
+  const n=(p&&p.kills)||0;
   if(!n){ el.innerHTML=`<span class="pdot"></span> Quiet so far today — be the first to log a Big Papa run.`; return; }
-  const wd=rows.filter(r=>(r.drop_count||0)>0).length, rate=100*wd/n, by={};
-  rows.forEach(r=>{ const h=r.handle||"anon"; (by[h]=by[h]||{k:0,d:0}); by[h].k++; by[h].d+=(r.drop_count||0); });
-  let lucky=null; Object.entries(by).forEach(([h,v])=>{ if(v.k>=10){ const a=v.d/v.k; if(!lucky||a>lucky.a) lucky={h,a}; } });
-  let active=null; Object.entries(by).forEach(([h,v])=>{ if(!active||v.k>active.k) active={h,k:v.k}; });
-  const tail = lucky?`luckiest: <b style="color:var(--cyan)">${esc(lucky.h)}</b>${vbadge(lucky.h)}` : (active?`most active: <b style="color:var(--cyan)">${esc(active.h)}</b>${vbadge(active.h)} (${active.k})`:"");
+  const rate=100*((p.with_drops||0)/n);
+  const tail = p.lucky_handle?`luckiest: <b style="color:var(--cyan)">${esc(p.lucky_handle)}</b>${vbadge(p.lucky_handle)}` : (p.active_handle?`most active: <b style="color:var(--cyan)">${esc(p.active_handle)}</b>${vbadge(p.active_handle)} (${p.active_kills})`:"");
   el.innerHTML=`<span class="pdot"></span> <b>Today:</b> ${n.toLocaleString()} kills logged · ${rate.toFixed(0)}% drop rate${tail?` · ${tail}`:""}`;
 }
 async function logKill(noDrop){
