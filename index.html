@@ -54,22 +54,20 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .dl{display:flex;gap:8px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:8px 10px;margin-bottom:8px}
 .dl select{flex:1}
 .dl .x{cursor:pointer;color:var(--dim2);font-family:var(--m);font-size:18px;padding:0 4px;line-height:1}.dl .x:hover{color:var(--bad)}
-.coregrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
-.coreg{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:9px 3px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.12s}
-.coreg:hover{border-color:#ffffff33}
-.coreg.sel{border-color:#fff;box-shadow:0 0 0 1px #fff,0 0 16px -6px #fff}
-.coreg span{font-family:var(--d);font-weight:600;font-size:9.5px;color:var(--txt2);text-align:center;line-height:1.05}
+.corebtns{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:11px}
+.cbtn{background:var(--card2);border:1px solid var(--line);border-radius:11px;padding:9px 3px 7px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;transition:.12s}
+.cbtn:hover{border-color:#ffffff33}
+.cbtn.armed{border-color:#fff;box-shadow:0 0 0 1px #fff,0 0 16px -6px #fff}
+.cbtn .cbi{display:inline-flex}.cbtn .cbi .gemsvg{width:28px;height:33px}
+.cbtn .cbn{font-family:var(--d);font-weight:600;font-size:9.5px;color:var(--txt2);text-align:center;line-height:1.05}
 .gemsvg{width:30px;height:36px;filter:drop-shadow(0 0 5px var(--gc))}
 .cicon{position:relative;display:inline-flex}
 .cicon img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.previewbar{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:14px}
-.preview{display:flex;align-items:center;gap:11px;flex:1;min-width:0}
-.pvgem{cursor:pointer;display:flex;flex:none}.pvgem .gemsvg{width:36px;height:42px}
-.pvtxt{display:flex;flex-direction:column;gap:3px;min-width:0}
-.pvname{font-family:var(--d);font-weight:700;font-size:13px}
-.pvtier{font-family:var(--m);font-size:10px;font-weight:700;padding:2px 8px;border-radius:6px;width:max-content}
-.pvempty{font-family:var(--m);font-size:11.5px;color:var(--dim)}
-.pvbtns{display:flex;gap:6px;flex:none}
+.thint{font-family:var(--m);font-size:11px;color:var(--dim);margin-bottom:8px}
+.tierbtns{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:13px;opacity:.4;pointer-events:none;transition:opacity .15s}
+.tierbtns.live{opacity:1;pointer-events:auto}
+.tbtn{background:var(--card2);border:1px solid var(--tc);color:var(--tc);border-radius:10px;padding:11px 6px;cursor:pointer;font-family:var(--d);font-weight:700;font-size:11.5px;transition:.12s}
+.tbtn:hover{filter:brightness(1.25)}
 .droplist{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:4px;min-height:2px}
 .dchip{display:inline-flex;align-items:center;gap:7px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:4px 9px 4px 6px;font-family:var(--m);font-size:12px;font-weight:600}
 .dchip .gemsvg{width:16px;height:19px}
@@ -96,6 +94,8 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .core{display:grid;grid-template-columns:148px 1fr 38px 44px 48px;align-items:center;gap:10px;margin-bottom:9px}
 .core .nm{font-size:12.5px;font-weight:500;display:flex;align-items:center;gap:8px;color:var(--txt2)}
 .core .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);flex:0 0 auto}
+.core .cmini{flex:0 0 auto;display:inline-flex;align-items:center}
+.core .cmini .gemsvg{width:19px;height:22px;filter:drop-shadow(0 0 3px var(--gc))}
 .core .ct{height:9px;background:var(--card2);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .core .cf{display:block;height:100%;border-radius:6px;transition:width .7s}
 .core .cn{font-family:var(--d);font-weight:600;font-size:12.5px;text-align:right;color:var(--txt)}
@@ -166,7 +166,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   .chlog{position:fixed;top:18px;right:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
   .howto{position:fixed;top:18px;left:24px;width:250px;margin:0;max-height:calc(100vh - 36px);overflow:auto;z-index:5}
 }
-@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}.lb{gap:7px}.lb .ld{display:none}.lb .lbg .bch:nth-child(n+3){display:none}.lb .lk{font-size:11px}.lb .lvtag{font-size:9px;padding:2px 5px}}
+@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}.corebtns{grid-template-columns:repeat(2,1fr)}.lb{gap:7px}.lb .ld{display:none}.lb .lbg .bch:nth-child(n+3){display:none}.lb .lk{font-size:11px}.lb .lvtag{font-size:9px;padding:2px 5px}}
 .rankcard{display:flex;align-items:center;gap:18px}
 .rkemb{width:64px;height:64px;flex:none;border-radius:16px;display:grid;place-items:center;border:2px solid var(--tc);box-shadow:0 0 22px -6px var(--tc)}
 .rklv{font-family:var(--d);font-weight:700;font-size:28px;color:var(--tc);line-height:1}
@@ -190,7 +190,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   #p-me.on #profile{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-log.on>.card,#p-stats.on>.card,#p-stats.on>.pulse,#p-me.on #profile>.card{margin-bottom:0}
   .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide{grid-column:1/-1}
-  #p-log.on>.howto,#p-log.on>.chlog{grid-column:1/-1;margin-bottom:0}
+  #p-log.on>.howto,#p-log.on>.chlog{margin-bottom:0}
 }
 </style>
 
@@ -222,13 +222,13 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
     </div>
     <div class="card">
       <div class="h3">Drops this kill</div>
-      <p class="note" style="margin:-2px 0 12px">Tap a core, tap it again to upgrade its tier, then <b>Add drop</b>. Repeat for each core dropped, then <b>Submit</b> — or <b>No drops</b> for a dry kill.</p>
-      <div class="coregrid" id="coreGrid"></div>
-      <div class="previewbar"><div class="preview" id="dropPreview"></div><div class="pvbtns"><button class="btn p mini" onclick="addCurrentDrop()">Add drop</button><button class="btn g mini" onclick="cancelSel()">Clear</button></div></div>
-      <div class="h3" style="font-size:13px;margin-bottom:9px">Dropped cores</div>
+      <p class="note" style="margin:-2px 0 12px">Tap a core, then its charge tier — repeat for each drop. No taps = a 0-drop kill.</p>
+      <div class="corebtns" id="coreBtns"></div>
+      <div class="thint" id="tierHint">↑ Pick a core first</div>
+      <div class="tierbtns" id="tierBtns"></div>
       <div class="droplist" id="dropChips"></div>
       <div class="bar">
-        <button class="btn p" id="logBtn" onclick="logKill(false)">Submit kill</button>
+        <button class="btn p" id="logBtn" onclick="logKill(false)">Log kill</button>
         <button class="btn g" onclick="logKill(true)">No drops</button>
         <span class="st" id="status"></span>
       </div>
@@ -301,6 +301,15 @@ const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 
 // Add a line at the TOP each time you change something. [label, what changed]
 const CHANGELOG=[
+  ["Jun 7","Official mo.co core icons + gem art"],
+  ["Jun 7","Tap-to-log: pick a core, tap to upgrade tier"],
+  ["Jun 6","Hunter ranks & levels added"],
+  ["Jun 6","Milestone badges on profiles + leaderboard"],
+  ["Jun 5","Mega Hall of Fame — luckiest & unluckiest"],
+  ["Jun 5","Live feed flair for Mega & jackpot drops"],
+  ["Jun 5","Luck split by kill type on profiles"],
+  ["Jun 4","Discord handle verification"],
+  ["Jun 4","Shareable stat card + OBS stream overlay"],
   ["Jun 3","Changelog panel added"],
   ["Jun 3","Drop-rate bars now colored per core"],
   ["Jun 3","Delete your own logs (per device)"],
@@ -327,7 +336,7 @@ const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e"
 const CORE_ICON_BASE="./";
 
 let logKT="normal", viewKT="all", lookupHandle=null;
-let selCore=null, selTier=0, dropList=[];
+let armedCore=null, dropList=[];
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
 if(!ok) document.getElementById("warn").style.display="block";
@@ -421,27 +430,28 @@ const TIER_FILE={semi:"semi-charged",charged:"charged",over:"overcharged",mega:"
 function coreGridIcon(core){ const g=gemSVG(CORE_COLOR[core]||"#8492a6"); if(!CORE_ICON_BASE||!CORE_FILE[core]) return g; return `<span class="cicon">${g}<img src="${CORE_ICON_BASE}${encodeURIComponent(CORE_FILE[core]+" upgrade core icon.png")}" alt="" loading="lazy" onerror="this.remove()" onload="this.previousElementSibling.style.visibility='hidden'"></span>`; }
 function coreGem(core,tier){ const g=gemSVG(CORE_COLOR[core]||"#8492a6"); if(!CORE_ICON_BASE||!CORE_FILE[core]||!TIER_FILE[tier]) return g; return `<span class="cicon">${g}<img src="${CORE_ICON_BASE}${encodeURIComponent(TIER_FILE[tier]+" "+CORE_FILE[core]+" upgrade core.png")}" alt="" loading="lazy" onerror="this.remove()" onload="this.previousElementSibling.style.visibility='hidden'"></span>`; }
 function buildLogInputs(){
-  selCore=null; selTier=0;
-  document.getElementById("coreGrid").innerHTML=CORES.map(c=>`<button class="coreg" data-core="${c}" onclick="tapCore('${c}')">${coreGridIcon(c)}<span>${coreLabel(c)}</span></button>`).join("");
-  renderPreview(); renderChips();
+  armedCore=null;
+  document.getElementById("coreBtns").innerHTML=CORES.map(c=>`<button class="cbtn" data-core="${c}" onclick="armCore('${c}')"><span class="cbi">${coreGridIcon(c)}</span><span class="cbn">${coreLabel(c)}</span></button>`).join("");
+  document.getElementById("tierBtns").innerHTML=TIERS.map(t=>`<button class="tbtn" data-tier="${t[0]}" style="--tc:${t[2]}" onclick="addDropTap('${t[0]}')">${t[1]}</button>`).join("");
+  document.getElementById("tierBtns").classList.remove("live");
+  document.getElementById("tierHint").textContent="↑ Pick a core first";
+  renderChips();
 }
-function tapCore(c){
-  if(selCore===c) selTier=(selTier+1)%TIERS.length; else { selCore=c; selTier=0; }
-  document.querySelectorAll("#coreGrid .coreg").forEach(b=>b.classList.toggle("sel",b.dataset.core===selCore));
-  renderPreview();
+function armCore(c){
+  armedCore=(armedCore===c)?null:c;
+  document.querySelectorAll("#coreBtns .cbtn").forEach(b=>b.classList.toggle("armed",b.dataset.core===armedCore));
+  document.getElementById("tierBtns").classList.toggle("live",!!armedCore);
+  document.getElementById("tierHint").textContent=armedCore?`Charge tier for ${coreLabel(armedCore)}:`:"↑ Pick a core first";
 }
-function cancelSel(){ selCore=null; selTier=0; document.querySelectorAll("#coreGrid .coreg").forEach(b=>b.classList.remove("sel")); renderPreview(); }
-function addCurrentDrop(){ if(!selCore) return; dropList.push({core:selCore,tier:TIERS[selTier][0]}); cancelSel(); renderChips(); }
+function addDropTap(t){
+  if(!armedCore) return;
+  dropList.push({core:armedCore,tier:t});
+  armCore(armedCore);
+  renderChips();
+}
 function removeDrop(i){ dropList.splice(i,1); renderChips(); }
-function renderPreview(){
-  const el=document.getElementById("dropPreview"); if(!el) return;
-  if(!selCore){ el.innerHTML=`<span class="pvempty">Tap a core above — tap it again to upgrade its tier</span>`; return; }
-  const t=TIERS[selTier];
-  el.innerHTML=`<span class="pvgem" onclick="tapCore('${selCore}')">${coreGem(selCore,TIERS[selTier][0])}</span><div class="pvtxt"><span class="pvname">${coreLabel(selCore)}</span><span class="pvtier" style="background:${t[2]}22;color:${t[2]}">${t[1]} ↑ tap to upgrade</span></div>`;
-}
 function renderChips(){
   const el=document.getElementById("dropChips"); if(!el) return;
-  if(!dropList.length){ el.innerHTML=`<span class="pvempty">No cores added yet — Submit logs a 0-drop kill, or use No drops.</span>`; return; }
   el.innerHTML=dropList.map((d,i)=>`<span class="dchip" style="border-color:${(TCOLOR[d.tier]||'#8492a6')}55">${coreGem(d.core,d.tier)}<span style="color:${TCOLOR[d.tier]||'#8492a6'}">${esc((TSHORT[d.tier]||"")+" "+coreLabel(d.core))}</span><span class="x" onclick="removeDrop(${i})">×</span></span>`).join("");
 }
 function celebrate(level){
@@ -531,7 +541,7 @@ async function render(){
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]),maxC=Math.max(...ce.map(e=>e[1]),1);
   document.getElementById("cores").innerHTML=ce.map(([c,v])=>{
     const rate=tk?100*v/tk:0,ox=v?Math.round(tk/v):0,col=CORE_COLOR[c]||"#8b6cff";
-    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${coreLabel(c)}</span>
+    return `<div class="core"><span class="nm"><span class="cmini">${coreGridIcon(c)}</span>${coreLabel(c)}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
       <span class="cn">${v}</span><span class="cr">${rate.toFixed(1)}%</span><span class="cx">${v?"1/"+ox:"—"}</span></div>`;}).join("");
   const MIN=30;
@@ -742,7 +752,7 @@ async function renderProfile(){
   const coreHTML=ce.map(([c,v])=>{
     const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[c]||0)/cKills:0, col=CORE_COLOR[c]||"#8b6cff";
     const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)";
-    return `<div class="core"><span class="nm"><span class="dot" style="background:${col}"></span>${coreLabel(c)}</span>
+    return `<div class="core"><span class="nm"><span class="cmini">${coreGridIcon(c)}</span>${coreLabel(c)}</span>
       <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
       <span class="cn">${v}</span><span class="cr" style="color:${dCol}">${pr.toFixed(1)}%</span><span class="cx">vs ${cr.toFixed(1)}%</span></div>`;}).join("");
   html+=`<div class="card"><div class="h3">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div>${coreHTML}</div>`;
