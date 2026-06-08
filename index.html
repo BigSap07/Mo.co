@@ -695,7 +695,8 @@ function boardBadges(s, verified, rank){
   if(mega>=10) out.push(["🌟","#f5a623","Mega Lord · 10 Mega cores"]);
   else if(mega>=5) out.push(["🔮","#f5a623","Mega Hoarder · 5 Mega cores"]);
   else if(mega>=1) out.push(["💜","#f5a623","First Mega"]);
-  if((s.best_multi||0)>=4) out.push(["🎰","#c6ff3a","Jackpot · 4 drops in 1 kill"]);
+  if((s.best_multi||0)>=6) out.push(["🤑","#ff3da6","Super Jackpot · 6 drops in 1 kill"]);
+  else if((s.best_multi||0)>=4) out.push(["🎰","#c6ff3a","Jackpot · 4 drops in 1 kill"]);
   if((s.oc||0)>=25) out.push(["⚡","#c887f7","Overcharged · 25 OC cores"]);
   return out.slice(0,4);
 }
@@ -805,6 +806,7 @@ async function renderProfile(){
   const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
   const bty=m.by_type||{};
   const rk=m.rank||0;
+  const lv=hunterLevel(levelScore({kills:m.kills,drops:m.drops,mega:T_.mega||0,over:T_.over||0,best_multi:S_.best_multi||0,with_drops:m.with_drops||0}));
   const BADGES=[
     {n:"Rookie",g:"🐣",c:"#aab4c4",e:m.kills>=10,r:"10 kills"},
     {n:"Century",g:"💯",c:"#c6ff3a",e:m.kills>=100,r:"100 kills"},
@@ -813,21 +815,28 @@ async function renderProfile(){
     {n:"Whale",g:"🐋",c:"#34d3ee",e:m.kills>=5000,r:"5,000 kills"},
     {n:"Champion",g:"🏆",c:"#f5d33b",e:rk===1,r:"#1 contributor"},
     {n:"Podium",g:"🥉",c:"#f5a623",e:rk>0&&rk<=3,r:"top 3 contributor"},
+    {n:"Elite",g:"🔷",c:"#34d3ee",e:lv>=20,r:"reach Elite rank"},
+    {n:"Master",g:"🔶",c:"#f5a623",e:lv>=35,r:"reach Master rank"},
+    {n:"Mythic",g:"🔱",c:"#ff3da6",e:lv>=80,r:"reach Mythic rank"},
     {n:"First Mega",g:"💜",c:"#f5a623",e:(T_.mega||0)>=1,r:"a Mega core"},
     {n:"Mega Hoarder",g:"🔮",c:"#f5a623",e:(T_.mega||0)>=5,r:"5 Mega cores"},
     {n:"Mega Lord",g:"🌟",c:"#f5a623",e:(T_.mega||0)>=10,r:"10 Mega cores"},
     {n:"Overcharged",g:"⚡",c:"#c887f7",e:(T_.over||0)>=25,r:"25 OC cores"},
     {n:"Completionist",g:"🌈",c:"#34d3ee",e:coresHit>=CORES.length,r:"every core type"},
     {n:"Ultimate Collector",g:"🏅",c:"#f5d33b",e:fullCore,r:"all 4 tiers of one core"},
+    {n:"Tier Sweep",g:"🃏",c:"#2fd07a",e:((T_.semi||0)>0&&(T_.charged||0)>0&&(T_.over||0)>0&&(T_.mega||0)>0),r:"all 4 tiers dropped"},
     {n:"Blessed",g:"🍀",c:"#2fd07a",e:(m.kills>=100&&luck>5),r:"+5 luck @ 100 kills"},
+    {n:"Hot Hand",g:"🔥",c:"#2fd07a",e:(m.kills>=250&&luck>10),r:"+10 luck @ 250 kills"},
     {n:"Cursed",g:"🪦",c:"#ff6b47",e:(m.kills>=100&&luck<-5),r:"−5 luck @ 100 kills"},
     {n:"Survivor",g:"🥵",c:"#ff6b47",e:(S_.longest_dry||0)>=15,r:"15-kill dry streak"},
     {n:"Jackpot",g:"🎰",c:"#c6ff3a",e:(S_.best_multi||0)>=4,r:"4 drops, 1 kill"},
+    {n:"Super Jackpot",g:"🤑",c:"#ff3da6",e:(S_.best_multi||0)>=6,r:"6 drops, 1 kill"},
     {n:"OC Slayer",g:"🗡️",c:"#c887f7",e:(bty.overcharged||0)>=25,r:"25 OC kills"},
     {n:"MC Slayer",g:"⚔️",c:"#f5a623",e:(bty.megacharged||0)>=25,r:"25 MC kills"},
     {n:"Chaos Hunter",g:"🌀",c:"#ff6b47",e:(bty.chaos||0)>=1,r:"a Chaos kill"},
     {n:"OC Chaos",g:"🌪️",c:"#ff9a3c",e:(bty.overcharged_chaos||0)>=1,r:"an OC Chaos kill"},
-    {n:"MC Chaos",g:"☄️",c:"#e85aff",e:(bty.megacharged_chaos||0)>=1,r:"an MC Chaos kill"}
+    {n:"MC Chaos",g:"☄️",c:"#e85aff",e:(bty.megacharged_chaos||0)>=1,r:"an MC Chaos kill"},
+    {n:"Chaos Master",g:"🌌",c:"#e85aff",e:((bty.chaos||0)>0&&(bty.overcharged_chaos||0)>0&&(bty.megacharged_chaos||0)>0),r:"all 3 Chaos types"}
   ];
   const earnedN=BADGES.filter(b=>b.e).length;
   const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" data-tip="${b.n} — ${b.e?"unlocked":"locked · "+b.r}">
