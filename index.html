@@ -119,6 +119,21 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .lt .r{font-family:var(--m);font-size:12px;font-weight:600;color:var(--txt2)}
 .lt .lu{font-family:var(--m);font-size:13px;font-weight:700;min-width:46px;text-align:right}
 .hof{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.tcrange{display:inline-flex;gap:5px}
+.tcrange button{font-family:var(--d);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--card2);color:var(--dim);cursor:pointer;transition:.12s}
+.tcrange button.on{background:var(--cyan);color:#0b0710;border-color:var(--cyan)}
+.tclegend{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
+.tcleg{display:inline-flex;align-items:center;gap:6px;font-family:var(--m);font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt2);cursor:pointer;transition:.12s;user-select:none}
+.tcleg .sw{width:11px;height:11px;border-radius:3px;flex:none}
+.tcleg.off{opacity:.45}.tcleg.off .sw{background:var(--dim2)!important}
+#tierchart{position:relative;min-height:60px}
+#tierchart svg{display:block;width:100%;height:auto;overflow:visible}
+.tchot{cursor:crosshair}
+.tctip{position:absolute;pointer-events:none;background:#160f22;border:1px solid var(--line2);border-radius:9px;padding:8px 10px;font-family:var(--m);font-size:11px;color:var(--txt);box-shadow:0 8px 24px rgba(0,0,0,.5);z-index:6;min-width:128px;opacity:0;transition:opacity .1s;transform:translate(-50%,-100%);white-space:nowrap}
+.tctip .td{font-weight:700;margin-bottom:5px;color:var(--cyan);font-family:var(--d)}
+.tctip .tr{display:flex;align-items:center;justify-content:space-between;gap:12px;line-height:1.6}
+.tctip .tr .sw{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+.tcempty{font-family:var(--m);font-size:12px;color:var(--dim);padding:24px 0;text-align:center}
 @media(max-width:600px){.hof{grid-template-columns:1fr;gap:20px}}
 .hoft{font-family:var(--d);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
 .hfr{display:flex;align-items:center;gap:9px;padding:7px 0;border-top:1px solid var(--line);font-size:12px}
@@ -266,6 +281,12 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
         <div class="kpi"><div class="l">Drop rate</div><div class="v c" id="kR">—</div></div>
       </div>
       <div class="conf" id="conf"></div>
+    </div>
+    <div class="card wide">
+      <div class="h3" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Drop rate over time</span><span class="tcrange" id="tcRange"></span></div>
+      <p class="note" style="margin:-4px 0 10px">Tier cores dropped per 100 kills, by day. Tap a tier in the legend to toggle it.</p>
+      <div class="tclegend" id="tcLegend"></div>
+      <div id="tierchart"><div class="tcempty">Loading…</div></div>
     </div>
     <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
     <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
@@ -516,11 +537,68 @@ async function logKill(noDrop){
   btn.disabled=false;
 }
 
+const TC_TIERS=[["semi","Semi","#4b8cf5"],["charged","Charged","#2fd07a"],["over","OC","#c887f7"],["mega","MC","#f5a623"]];
+let tcDays=30, tcHidden={}, TC_CACHE={};
+function renderTierChart(){
+  const rb=document.getElementById("tcRange");
+  if(rb && !rb.dataset.init){ rb.dataset.init="1";
+    rb.innerHTML=[[7,"7d"],[30,"30d"],[90,"90d"]].map(x=>`<button data-d="${x[0]}"${x[0]===tcDays?' class="on"':''}>${x[1]}</button>`).join("");
+    rb.querySelectorAll("button").forEach(b=>b.onclick=()=>{ tcDays=+b.dataset.d; rb.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); loadTierData(); });
+  }
+  const lg=document.getElementById("tcLegend");
+  if(lg && !lg.dataset.init){ lg.dataset.init="1";
+    lg.innerHTML=TC_TIERS.map(t=>`<span class="tcleg" data-k="${t[0]}"><span class="sw" style="background:${t[2]}"></span>${t[1]}</span>`).join("");
+    lg.querySelectorAll(".tcleg").forEach(c=>c.onclick=()=>{ const k=c.dataset.k; tcHidden[k]=!tcHidden[k]; c.classList.toggle("off",!!tcHidden[k]); paintTierChart(); });
+  }
+  loadTierData();
+}
+async function loadTierData(){
+  const host=document.getElementById("tierchart"); if(!host) return;
+  if(TC_CACHE[tcDays]===undefined){ try{ TC_CACHE[tcDays]=await rpc("get_tier_series",{p_days:tcDays}); }catch(e){ TC_CACHE[tcDays]=null; } }
+  paintTierChart();
+}
+function paintTierChart(){
+  const host=document.getElementById("tierchart"); if(!host) return;
+  const raw=TC_CACHE[tcDays];
+  if(raw===null){ host.innerHTML='<div class="tcempty">Couldn\u2019t load the timeline.</div>'; return; }
+  const data=(raw||[]).filter(r=>r.kills>0);
+  if(data.length<2){ host.innerHTML='<div class="tcempty">Not enough days logged yet for this range.</div>'; return; }
+  const pts=data.map(r=>({d:r.d,kills:r.kills,
+    semi:100*r.semi/r.kills,charged:100*r.charged/r.kills,over:100*r.over/r.kills,mega:100*r.mega/r.kills,
+    cnt:{semi:r.semi,charged:r.charged,over:r.over,mega:r.mega}}));
+  const cw=host.clientWidth||760;
+  const W=Math.max(320,Math.min(cw,1100)), H=cw<480?Math.round(W*0.6):300;
+  const padL=40,padR=14,padT=14,padB=34, iw=W-padL-padR, ih=H-padT-padB, n=pts.length;
+  const vis=TC_TIERS.filter(t=>!tcHidden[t[0]]);
+  let maxY=0; pts.forEach(p=>vis.forEach(t=>{ if(p[t[0]]>maxY)maxY=p[t[0]]; })); maxY=Math.max(maxY,1)*1.12;
+  const X=i=> padL+(n===1?iw/2:iw*i/(n-1));
+  const Y=v=> padT+ih*(1-v/maxY);
+  let grid="",yl="";
+  for(let g=0;g<=4;g++){ const v=maxY*g/4,y=Y(v); grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#ffffff12"/>`; yl+=`<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" fill="#7a6f8a" font-size="9" font-family="Outfit">${v.toFixed(v<10?1:0)}</text>`; }
+  let xl=""; const step=Math.max(1,Math.ceil(n/6));
+  pts.forEach((p,i)=>{ if(i%step===0||i===n-1){ const dt=new Date(p.d); xl+=`<text x="${X(i).toFixed(1)}" y="${H-padB+16}" text-anchor="middle" fill="#7a6f8a" font-size="9" font-family="Outfit">${dt.getMonth()+1}/${dt.getDate()}</text>`; } });
+  let lines=""; vis.forEach(t=>{ const k=t[0]; const dp=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p[k]).toFixed(1)}`).join(" "); lines+=`<path d="${dp}" fill="none" stroke="${t[2]}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>`; });
+  let hot=""; const cw2=n>1?iw/(n-1):iw; pts.forEach((p,i)=>{ hot+=`<rect class="tchot" data-i="${i}" x="${(X(i)-cw2/2).toFixed(1)}" y="${padT}" width="${cw2.toFixed(1)}" height="${ih}" fill="transparent"/>`; });
+  host.innerHTML=`<svg id="tcsvg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${grid}${yl}${xl}<line id="tcguide" x1="0" y1="${padT}" x2="0" y2="${padT+ih}" stroke="#ffffff44" stroke-dasharray="3 3" style="opacity:0"/>${lines}<g id="tcdots"></g>${hot}</svg><div class="tctip" id="tctip"></div>`;
+  const svgEl=document.getElementById("tcsvg"),tip=document.getElementById("tctip"),guide=document.getElementById("tcguide"),gd=document.getElementById("tcdots");
+  function showAt(i){ const p=pts[i],x=X(i); guide.setAttribute("x1",x); guide.setAttribute("x2",x); guide.style.opacity="1";
+    gd.innerHTML=vis.map(t=>`<circle cx="${x.toFixed(1)}" cy="${Y(p[t[0]]).toFixed(1)}" r="3.5" fill="${t[2]}" stroke="#0b0710" stroke-width="1.5"/>`).join("");
+    tip.innerHTML=`<div class="td">${new Date(p.d).toLocaleDateString(undefined,{month:'short',day:'numeric'})} \u00b7 ${p.kills} kills</div>`+vis.map(t=>`<div class="tr"><span><span class="sw" style="background:${t[2]}"></span>${t[1]}</span><b>${p[t[0]].toFixed(1)} <span style="color:var(--dim2);font-weight:400">/100 (${p.cnt[t[0]]})</span></b></div>`).join("");
+    const r=svgEl.getBoundingClientRect(),hr=host.getBoundingClientRect();
+    let topv=Math.min.apply(null,vis.map(t=>Y(p[t[0]])));
+    tip.style.left=((x/W)*r.width)+"px"; tip.style.top=(((topv/H)*r.height)-12)+"px"; tip.style.opacity="1";
+  }
+  function hide(){ guide.style.opacity="0"; tip.style.opacity="0"; gd.innerHTML=""; }
+  svgEl.querySelectorAll(".tchot").forEach(rc=>{ const i=+rc.dataset.i; rc.addEventListener("mouseenter",()=>showAt(i)); rc.addEventListener("mousemove",()=>showAt(i)); rc.addEventListener("touchstart",()=>showAt(i),{passive:true}); });
+  svgEl.addEventListener("mouseleave",hide);
+}
+let tcRT; window.addEventListener("resize",()=>{ clearTimeout(tcRT); tcRT=setTimeout(()=>{ const sp=document.getElementById("p-stats"); if(sp&&sp.classList.contains("on")) paintTierChart(); },200); });
 async function load(){
   if(!ok) return;
   await loadVerified();
   try{ const all=await rpc("get_stats",{p_kt:"all"}); COMM={kills:all.kills||0,drops:all.drops||0}; document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
-  render(); renderBoard(); renderLuckBoard(); renderFeed(); renderProfile(); renderPulse();
+  TC_CACHE={};
+  render(); renderBoard(); renderLuckBoard(); renderFeed(); renderProfile(); renderPulse(); renderTierChart();
 }
 
 async function render(){
@@ -825,6 +903,7 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   document.querySelectorAll(".panel").forEach(x=>x.classList.remove("on"));
   b.classList.add("on"); document.getElementById("p-"+b.dataset.p).classList.add("on");
   if(b.dataset.p==="me") renderProfile();
+  if(b.dataset.p==="stats") paintTierChart();
 });
 if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
 buildChips(); buildLogInputs(); renderLog(); initAuth(); load();
