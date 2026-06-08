@@ -368,6 +368,7 @@ const CORE_COLOR={"Crit Damage":"#ff9d2e","Healing":"#3b82f6","Damage":"#ff5c9e"
 // Fankit art: drop ALL 41 fankit PNGs (unchanged names) into one repo folder, then set CORE_ICON_BASE to that folder (e.g. "assets/cores/"). Falls back to SVG gems automatically.
 const CORE_ICON_BASE="./";
 const LOGO_SRC="./moco_logo_primary.png";
+const BG_SRC="./moco_bg.jpg"; const BIGPAPA_SRC="./bigpapa.png";
 function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
 
 let logKT="normal", viewKT="all", lookupHandle=null;
@@ -846,7 +847,8 @@ async function renderProfile(){
 
   const cores=m.cores||{}, commCores=(m.community&&m.community.cores)||{};
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1);
-  cardData={handle:h,verified:VERIFIED.has(String(h).toLowerCase()),rank:m.rank,contributors:m.contributors,kills:m.kills,drops:m.drops,rate:rate,avg:(m.kills?m.drops/m.kills:0),luck:luck,luckCol:luckCol,cores:ce};
+  const _lv=hunterLevel(levelScore({kills:m.kills,drops:m.drops,mega:tiers.mega||0,over:tiers.over||0,best_multi:st.best_multi||0,with_drops:Math.round(rate*m.kills)})), _rt=rankTier(_lv);
+  cardData={handle:h,verified:VERIFIED.has(String(h).toLowerCase()),rank:m.rank,contributors:m.contributors,kills:m.kills,drops:m.drops,rate:rate,avg:(m.kills?m.drops/m.kills:0),luck:luck,luckCol:luckCol,cores:ce,tiers:{semi:tiers.semi||0,charged:tiers.charged||0,over:tiers.over||0,mega:tiers.mega||0},bestMulti:st.best_multi||0,dry:st.longest_dry||0,level:_lv,rankName:_rt[0],rankCol:_rt[1]};
   const coreHTML=ce.map(([c,v])=>{
     const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[c]||0)/cKills:0, col=CORE_COLOR[c]||"#8b6cff";
     const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)";
@@ -872,35 +874,53 @@ async function renderProfile(){
 }
 function rr(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath();}
 async function shareCard(){
-  if(!cardData) return; const d=cardData; const W=1080,Hc=1080,P=72;
+  if(!cardData) return; const d=cardData; const W=1080,Hc=1350,P=72;
   const cv=document.createElement("canvas"); cv.width=W; cv.height=Hc; const x=cv.getContext("2d");
   try{ await Promise.all([document.fonts.load("400 30px mocoSans"),document.fonts.load("700 30px mocoSans"),document.fonts.load("900 72px mocoSans")]); await document.fonts.ready; }catch(e){}
+  const [bg,papa,logo]=await Promise.all([loadImg(BG_SRC).catch(()=>null),loadImg(BIGPAPA_SRC).catch(()=>null),loadImg(LOGO_SRC).catch(()=>null)]);
   x.fillStyle="#0b0710"; x.fillRect(0,0,W,Hc);
-  let g=x.createRadialGradient(W*0.85,-60,0,W*0.85,-60,720); g.addColorStop(0,"rgba(255,61,166,.18)"); g.addColorStop(1,"rgba(255,61,166,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
-  g=x.createRadialGradient(-40,Hc+40,0,-40,Hc+40,720); g.addColorStop(0,"rgba(198,255,58,.13)"); g.addColorStop(1,"rgba(198,255,58,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
-  x.strokeStyle="rgba(198,255,58,.22)"; x.lineWidth=2; rr(x,20,20,W-40,Hc-40,30); x.stroke();
+  if(bg){ const sc=Math.max(W/bg.width,Hc/bg.height), bw=bg.width*sc, bh=bg.height*sc; x.drawImage(bg,(W-bw)/2,(Hc-bh)*0.18,bw,bh);
+    const ov=x.createLinearGradient(0,0,0,Hc); ov.addColorStop(0,"rgba(11,7,16,.86)"); ov.addColorStop(.42,"rgba(11,7,16,.62)"); ov.addColorStop(1,"rgba(11,7,16,.93)"); x.fillStyle=ov; x.fillRect(0,0,W,Hc); }
+  let g=x.createRadialGradient(W*0.85,-60,0,W*0.85,-60,760); g.addColorStop(0,"rgba(255,61,166,.16)"); g.addColorStop(1,"rgba(255,61,166,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
+  g=x.createRadialGradient(-40,Hc+40,0,-40,Hc+40,760); g.addColorStop(0,"rgba(198,255,58,.11)"); g.addColorStop(1,"rgba(198,255,58,0)"); x.fillStyle=g; x.fillRect(0,0,W,Hc);
+  if(papa){ const ph=358, pw=ph*papa.width/papa.height; x.save(); x.shadowColor="rgba(255,61,166,.5)"; x.shadowBlur=46; x.drawImage(papa, W-pw+74, -16, pw, ph); x.restore(); }
+  x.strokeStyle="rgba(198,255,58,.24)"; x.lineWidth=2; rr(x,20,20,W-40,Hc-40,30); x.stroke();
   x.textBaseline="alphabetic"; x.textAlign="left";
-  const logo=await loadImg(LOGO_SRC).catch(()=>null);
-  if(logo){ const lh=58, lw=lh*logo.width/logo.height; x.save(); x.filter="invert(1)"; x.drawImage(logo,P,52,lw,lh); x.restore(); x.fillStyle="#c6ff3a"; x.font="600 22px mocoSans"; x.textBaseline="middle"; x.fillText("DROP TRACKER", P+lw+20, 52+lh/2+2); x.textBaseline="alphabetic"; }
-  else { x.fillStyle="#c6ff3a"; x.font="600 22px mocoSans"; x.fillText("M O . C O   ·   D R O P   T R A C K E R", P, 102); }
-  x.fillStyle="#f3eefa"; x.font="900 72px mocoSans"; const hw=x.measureText(d.handle).width; x.fillText(d.handle, P, 188);
-  if(d.verified){ x.fillStyle="#c6ff3a"; x.font="700 54px mocoSans"; x.fillText("\u2713", P+hw+20, 188); }
-  if(d.rank){ x.fillStyle="#7d7090"; x.font="600 26px mocoSans"; x.fillText("RANK #"+d.rank+" / "+d.contributors, P, 230); }
+  if(logo){ const lh=54, lw=lh*logo.width/logo.height; x.save(); x.filter="invert(1)"; x.drawImage(logo,P,50,lw,lh); x.restore(); x.fillStyle="#c6ff3a"; x.font="700 22px mocoSans"; x.textBaseline="middle"; x.fillText("DROP TRACKER", P+lw+18, 50+lh/2+1); x.textBaseline="alphabetic"; }
+  else { x.fillStyle="#c6ff3a"; x.font="700 22px mocoSans"; x.fillText("MO.CO DROP TRACKER", P, 92); }
+  x.font="700 23px mocoSans"; const rtxt=(d.rankName||"Rookie").toUpperCase()+"  \u00b7  LV "+(d.level||1); const rw=x.measureText(rtxt).width, rc=d.rankCol||"#aab4c4";
+  x.fillStyle=rc+"22"; rr(x,P,122,rw+42,42,21); x.fill(); x.strokeStyle=rc+"66"; x.lineWidth=1.5; rr(x,P,122,rw+42,42,21); x.stroke();
+  x.fillStyle=rc; x.textBaseline="middle"; x.fillText(rtxt,P+21,122+22); x.textBaseline="alphabetic";
+  x.fillStyle="#f3eefa"; x.font="900 66px mocoSans"; const hw=x.measureText(d.handle).width; x.fillText(d.handle,P,250);
+  if(d.verified){ x.fillStyle="#c6ff3a"; x.font="700 48px mocoSans"; x.fillText("\u2713", P+hw+18, 250); }
+  if(d.rank){ x.fillStyle="#9b8fae"; x.font="600 25px mocoSans"; x.fillText("RANK #"+d.rank+" / "+d.contributors, P, 292); }
   const tiles=[["KILLS",d.kills.toLocaleString(),"#c6ff3a"],["DROP RATE",(d.rate*100).toFixed(1)+"%","#c6ff3a"],["LUCK VS COMMUNITY",(d.luck>=0?"+":"")+d.luck.toFixed(1),d.luckCol],["AVG / KILL",d.avg.toFixed(2),"#f3eefa"]];
-  const tw=(W-P*2-30)/2, th=152;
-  tiles.forEach((t,i)=>{ const tx=P+(i%2)*(tw+30), ty=292+Math.floor(i/2)*(th+30);
-    x.fillStyle="#15101d"; rr(x,tx,ty,tw,th,18); x.fill(); x.strokeStyle="#2a1f38"; x.lineWidth=1.5; rr(x,tx,ty,tw,th,18); x.stroke();
-    x.fillStyle="#c6ff3a"; rr(x,tx,ty+26,4,th-52,2); x.fill();
-    x.fillStyle="#7d7090"; x.font="600 22px mocoSans"; x.fillText(t[0], tx+30, ty+52);
-    x.fillStyle=t[2]; x.font="700 58px mocoSans"; x.fillText(t[1], tx+28, ty+120); });
-  let cy=292+2*(th+30)+44; x.fillStyle="#7d7090"; x.font="600 22px mocoSans"; x.fillText("TOP CORES", P, cy); cy+=46;
+  const tw=(W-P*2-28)/2, th=146;
+  tiles.forEach((t,i)=>{ const tx=P+(i%2)*(tw+28), ty=330+Math.floor(i/2)*(th+28);
+    x.fillStyle="rgba(21,16,29,.92)"; rr(x,tx,ty,tw,th,18); x.fill(); x.strokeStyle="#2a1f38"; x.lineWidth=1.5; rr(x,tx,ty,tw,th,18); x.stroke();
+    x.fillStyle="#c6ff3a"; rr(x,tx,ty+24,4,th-48,2); x.fill();
+    x.fillStyle="#9b8fae"; x.font="600 21px mocoSans"; x.fillText(t[0], tx+28, ty+50);
+    x.fillStyle=t[2]; x.font="700 56px mocoSans"; x.fillText(t[1], tx+26, ty+116); });
+  let ty2=330+2*(th+28)+44; x.fillStyle="#9b8fae"; x.font="600 21px mocoSans"; x.fillText("TIER BREAKDOWN", P, ty2);
+  const TS=[["semi","SEMI","#4b8cf5"],["charged","CHARGED","#2fd07a"],["over","OC","#c887f7"],["mega","MC","#f5a623"]];
+  const cw=(W-P*2-3*18)/4, cyt=ty2+18, chh=108;
+  TS.forEach((t,i)=>{ const cx=P+i*(cw+18), cnt=(d.tiers&&d.tiers[t[0]])||0, odds=cnt?("1/"+Math.round(d.kills/cnt)):"\u2014";
+    x.fillStyle="rgba(21,16,29,.92)"; rr(x,cx,cyt,cw,chh,16); x.fill(); x.strokeStyle=t[2]+"55"; x.lineWidth=1.5; rr(x,cx,cyt,cw,chh,16); x.stroke();
+    x.textAlign="center"; x.fillStyle=t[2]; x.font="700 19px mocoSans"; x.fillText(t[1], cx+cw/2, cyt+32);
+    x.fillStyle="#f3eefa"; x.font="900 40px mocoSans"; x.fillText(cnt.toLocaleString(), cx+cw/2, cyt+74);
+    x.fillStyle="#7d7090"; x.font="600 17px mocoSans"; x.fillText(odds, cx+cw/2, cyt+98); });
+  x.textAlign="left";
+  let cy=cyt+chh+52; x.fillStyle="#9b8fae"; x.font="600 21px mocoSans"; x.fillText("TOP CORES", P, cy); cy+=44;
   const maxv=Math.max(...d.cores.map(c=>c[1]),1);
   d.cores.slice(0,4).forEach(([name,v])=>{ const pr=d.kills?100*v/d.kills:0, col=CORE_COLOR[name]||"#8b6cff";
-    x.fillStyle="#bcb0c9"; x.font="600 30px mocoSans"; x.textAlign="left"; x.fillText(coreLabel(name), P, cy+8);
-    const bx=P+360, bw=W-P-120-bx, bh=18; x.fillStyle="#15101d"; rr(x,bx,cy-10,bw,bh,9); x.fill();
-    x.fillStyle=col; rr(x,bx,cy-10,Math.max(10,bw*v/maxv),bh,9); x.fill();
-    x.fillStyle=col; x.font="700 28px mocoSans"; x.textAlign="right"; x.fillText(pr.toFixed(1)+"%", W-P, cy+8); cy+=60; });
-  x.textAlign="center"; x.fillStyle="#7d7090"; x.font="600 23px mocoSans"; x.fillText("\u25CF  MO.CO DROP TRACKER  ·  bigsap07.github.io/Mo.co", W/2, Hc-58);
+    x.fillStyle="#bcb0c9"; x.font="600 28px mocoSans"; x.textAlign="left"; x.fillText(coreLabel(name), P, cy+8);
+    const bx=P+340, bw=W-P-130-bx, bh=18; x.fillStyle="rgba(21,16,29,.9)"; rr(x,bx,cy-9,bw,bh,9); x.fill();
+    x.fillStyle=col; rr(x,bx,cy-9,Math.max(10,bw*v/maxv),bh,9); x.fill();
+    x.fillStyle=col; x.font="700 26px mocoSans"; x.textAlign="right"; x.fillText(pr.toFixed(1)+"%", W-P, cy+8); cy+=54; });
+  cy+=18; x.textAlign="center"; x.fillStyle="#9b8fae"; x.font="600 22px mocoSans";
+  x.fillText("BEST MULTI  "+d.bestMulti+"        DRY STREAK  "+d.dry+"        TOTAL DROPS  "+d.drops.toLocaleString(), W/2, cy);
+  x.fillStyle="#7d7090"; x.font="600 22px mocoSans"; x.fillText("\u25CF  MO.CO DROP TRACKER  \u00b7  bigsap07.github.io/Mo.co", W/2, Hc-50);
+  x.textAlign="left";
   cv.toBlob(async(blob)=>{ if(!blob) return;
     try{ await navigator.clipboard.write([new ClipboardItem({"image/png":blob})]); }catch(e){}
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(d.handle.replace(/[^a-z0-9]+/gi,"_")||"stats")+"_moco.png"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000);
