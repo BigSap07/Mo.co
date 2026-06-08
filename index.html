@@ -26,7 +26,8 @@ body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--m);font-varian
    radial-gradient(760px 520px at -8% 112%,rgba(198,255,58,.09),transparent 60%),
    var(--bg);background-attachment:fixed;-webkit-font-smoothing:antialiased}
 .wrap{max-width:780px;margin:0 auto;position:relative;z-index:1}
-.hd{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+.hd{display:flex;align-items:center;gap:14px;margin-bottom:20px;position:relative;min-height:90px;padding-right:184px}
+.hero{position:absolute;right:-6px;top:50%;transform:translateY(-50%);height:132px;width:auto;pointer-events:none;z-index:0;filter:drop-shadow(0 0 20px rgba(255,61,166,.28)) drop-shadow(0 0 5px rgba(0,0,0,.5))}
 .mark{width:48px;height:48px;border-radius:14px;flex:0 0 auto;display:grid;place-items:center;
   background:linear-gradient(150deg,#1d1428,#120c1a);border:1px solid var(--line2);box-shadow:0 0 22px rgba(198,255,58,.16)}
 .mark svg{width:23px;height:23px;stroke:var(--cyan)}
@@ -187,7 +188,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .hi .hx{font-size:11px;color:var(--txt2);line-height:1.5}
 .ci .cd{font-family:var(--m);font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);margin-bottom:3px}
 .ci .ctx{font-size:11.5px;color:var(--txt2);line-height:1.45}
-@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}.corebtns{grid-template-columns:repeat(2,1fr)}.lb{gap:7px}.lb .ld{display:none}.lb .lbg .bch:nth-child(n+3){display:none}.lb .lk{font-size:11px}.lb .lvtag{font-size:9px;padding:2px 5px}}
+@media(max-width:600px){.k4{grid-template-columns:1fr 1fr}.tier{grid-template-columns:92px 1fr auto auto auto}.core{grid-template-columns:118px 1fr auto auto auto}.live .n{font-size:24px}.hd{min-height:auto;padding-right:0}.hero{display:none}.corebtns{grid-template-columns:repeat(2,1fr)}.lb{gap:7px}.lb .ld{display:none}.lb .lbg .bch:nth-child(n+3){display:none}.lb .lk{font-size:11px}.lb .lvtag{font-size:9px;padding:2px 5px}}
 .rankcard{display:flex;align-items:center;gap:18px}
 .rkemb{width:64px;height:64px;flex:none;border-radius:16px;display:grid;place-items:center;border:2px solid var(--tc);box-shadow:0 0 22px -6px var(--tc)}
 .rklv{font-family:var(--d);font-weight:700;font-size:28px;color:var(--tc);line-height:1}
@@ -223,6 +224,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
       <div class="tag">Community pooled drop rates</div>
     </div>
     <div class="live"><div class="n" id="liveN">—</div><div class="l">total kills</div></div>
+    <img class="hero" src="./bigpapa.png" alt="">
   </div>
 
   <div class="seg">
