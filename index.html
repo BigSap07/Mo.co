@@ -560,6 +560,7 @@ async function logKill(noDrop){
   }catch(e){
     let msg=e.message||""; try{ const j=JSON.parse(msg); msg=j.message||j.msg||msg; }catch(_){}
     if(/is claimed/i.test(msg)){ st.textContent="🔒 That handle is verified — sign in with Discord to log under it."; }
+    else if(/rate limit|too fast/i.test(msg)){ st.textContent="⏳ Too fast — wait a few seconds and try again."; }
     else { st.textContent="error — see console"; console.error(e); }
   }
   btn.disabled=false;
