@@ -827,7 +827,7 @@ async function renderProfile(){
     {n:"Tier Sweep",g:"🃏",c:"#2fd07a",e:((T_.semi||0)>0&&(T_.charged||0)>0&&(T_.over||0)>0&&(T_.mega||0)>0),r:"all 4 tiers dropped"},
     {n:"Blessed",g:"🍀",c:"#2fd07a",e:(m.kills>=100&&luck>5),r:"+5 luck @ 100 kills"},
     {n:"Hot Hand",g:"🔥",c:"#2fd07a",e:(m.kills>=250&&luck>10),r:"+10 luck @ 250 kills"},
-    {n:"Cursed",g:"🪦",c:"#ff6b47",e:(m.kills>=100&&luck<-5),r:"−5 luck @ 100 kills"},
+    {n:"Cursed",g:"💀",c:"#ff6b47",e:(m.kills>=100&&luck<-5),r:"−5 luck @ 100 kills"},
     {n:"Survivor",g:"🥵",c:"#ff6b47",e:(S_.longest_dry||0)>=15,r:"15-kill dry streak"},
     {n:"Jackpot",g:"🎰",c:"#c6ff3a",e:(S_.best_multi||0)>=4,r:"4 drops, 1 kill"},
     {n:"Super Jackpot",g:"🤑",c:"#ff3da6",e:(S_.best_multi||0)>=6,r:"6 drops, 1 kill"},
@@ -838,6 +838,8 @@ async function renderProfile(){
     {n:"MC Chaos",g:"☄️",c:"#e85aff",e:(bty.megacharged_chaos||0)>=1,r:"an MC Chaos kill"},
     {n:"Chaos Master",g:"🌌",c:"#e85aff",e:((bty.chaos||0)>0&&(bty.overcharged_chaos||0)>0&&(bty.megacharged_chaos||0)>0),r:"all 3 Chaos types"}
   ];
+  const _allOther=BADGES.filter(b=>b.n!=="Cursed").every(b=>b.e);
+  BADGES.push({n:"Ultimate Completionist",g:"💎",c:"#ff3da6",e:_allOther,r:"earn every other badge"});
   const earnedN=BADGES.filter(b=>b.e).length;
   const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" data-tip="${b.n} — ${b.e?"unlocked":"locked · "+b.r}">
     <span class="ic" style="background:${b.e?b.c+"22":"#ffffff10"};color:${b.e?b.c:"var(--dim)"}">${b.g}</span>
