@@ -122,6 +122,10 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 .tcrange{display:inline-flex;gap:5px}
 .tcrange button{font-family:var(--d);font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--card2);color:var(--dim);cursor:pointer;transition:.12s}
 .tcrange button.on{background:var(--cyan);color:#0b0710;border-color:var(--cyan)}
+.tcmetric{display:flex;flex-wrap:wrap;gap:6px}
+.tcmetric button.on{background:var(--vc,var(--cyan));border-color:var(--vc,var(--cyan));color:#0b0710}
+.statcol{display:flex;flex-direction:column;gap:13px;min-width:0;margin-bottom:13px}
+.statcol>.card{margin-bottom:0}
 .tclegend{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px}
 .tcleg{display:inline-flex;align-items:center;gap:6px;font-family:var(--m);font-size:11px;font-weight:600;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card2);color:var(--txt2);cursor:pointer;transition:.12s;user-select:none}
 .tcleg .sw{width:11px;height:11px;border-radius:3px;flex:none}
@@ -205,7 +209,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   #p-log.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-stats.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-me.on #profile{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-  #p-log.on>.card,#p-stats.on>.card,#p-stats.on>.pulse,#p-me.on #profile>.card{margin-bottom:0}
+  #p-log.on>.card,#p-stats.on>.card,#p-stats.on>.statcol,#p-stats.on>.pulse,#p-me.on #profile>.card{margin-bottom:0}
   .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide{grid-column:1/-1}
   #p-log.on>.howto,#p-log.on>.chlog{margin-bottom:0}
 }
@@ -285,12 +289,14 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
     <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
     <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
     <div class="card"><div class="h3">Top contributors</div><p class="note" style="margin:-4px 0 12px">Luck % = drops per kill vs the community average.</p><div class="board" id="board"></div></div>
+    <div class="statcol">
     <div class="card"><div class="h3">Mega Hall of Fame <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· min 50 kills</span></div><p class="note" style="margin:-4px 0 12px">Megacharged cores per 100 kills. Score = MC / 100 kills · sub = mega / total kills.</p><div id="luckboard"></div></div>
-    <div class="card wide">
+    <div class="card">
       <div class="h3" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap"><span>Drop rate over time</span><span class="tcrange" id="tcRange"></span></div>
-      <p class="note" style="margin:-4px 0 10px">Community drop rate by day. Hover a day for the breakdown.</p>
+      <p class="note" style="margin:-4px 0 10px">Drop rate, avg per kill, or per-tier — click a view. Hover a day for detail.</p>
       <div class="tcrange tcmetric" id="tcMetric" style="margin-bottom:14px"></div>
       <div id="tierchart"><div class="tcempty">Loading…</div></div>
+    </div>
     </div>
     <div class="card wide"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
   </div>
@@ -537,18 +543,20 @@ async function logKill(noDrop){
   btn.disabled=false;
 }
 
-const TC_METRICS=[["rate","Drop rate","#c6ff3a"],["avg","Avg / kill","#34d3ee"]];
-let tcDays=30, tcMetric="rate", TC_CACHE={};
+const TC_VIEWS=[["rate","Drop rate","#c6ff3a"],["avg","Avg / kill","#34d3ee"],["semi","Semi","#4b8cf5"],["charged","Charged","#2fd07a"],["over","OC","#c887f7"],["mega","MC","#f5a623"]];
+let tcDays=30, tcView="rate", TC_CACHE={};
+function tcColor(){ return (TC_VIEWS.find(v=>v[0]===tcView)||TC_VIEWS[0])[2]; }
+function tcVal(r){ if(tcView==="rate") return 100*(r.with_drops||0)/r.kills; if(tcView==="avg") return (r.drops||0)/r.kills; return 100*((r[tcView]||0)/r.kills); }
 function renderTierChart(){
   const rb=document.getElementById("tcRange");
   if(rb && !rb.dataset.init){ rb.dataset.init="1";
-    rb.innerHTML=[[7,"7d"],[30,"30d"],[90,"90d"]].map(x=>`<button data-d="${x[0]}"${x[0]===tcDays?' class="on"':''}>${x[1]}</button>`).join("");
+    rb.innerHTML=[[7,"7D"],[30,"30D"],[90,"90D"],[3650,"All"]].map(x=>`<button data-d="${x[0]}"${x[0]===tcDays?' class="on"':''}>${x[1]}</button>`).join("");
     rb.querySelectorAll("button").forEach(b=>b.onclick=()=>{ tcDays=+b.dataset.d; rb.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); loadTierData(); });
   }
   const mt=document.getElementById("tcMetric");
   if(mt && !mt.dataset.init){ mt.dataset.init="1";
-    mt.innerHTML=TC_METRICS.map(m=>`<button data-m="${m[0]}"${m[0]===tcMetric?' class="on"':''}>${m[1]}</button>`).join("");
-    mt.querySelectorAll("button").forEach(b=>b.onclick=()=>{ tcMetric=b.dataset.m; mt.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); paintTierChart(); });
+    mt.innerHTML=TC_VIEWS.map(v=>`<button data-v="${v[0]}" style="--vc:${v[2]}"${v[0]===tcView?' class="on"':''}>${v[1]}</button>`).join("");
+    mt.querySelectorAll("button").forEach(b=>b.onclick=()=>{ tcView=b.dataset.v; mt.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b)); paintTierChart(); });
   }
   loadTierData();
 }
@@ -563,21 +571,23 @@ function paintTierChart(){
   if(raw===null){ host.innerHTML='<div class="tcempty">Couldn\u2019t load the timeline.</div>'; return; }
   const data=(raw||[]).filter(r=>r.kills>0);
   if(data.length<2){ host.innerHTML='<div class="tcempty">Not enough days logged yet for this range.</div>'; return; }
-  const col=(TC_METRICS.find(m=>m[0]===tcMetric)||TC_METRICS[0])[2];
-  const pts=data.map(r=>({d:r.d,kills:r.kills,rate:100*(r.with_drops||0)/r.kills,avg:(r.drops||0)/r.kills}));
-  pts.forEach(p=>p.y=tcMetric==="rate"?p.rate:p.avg);
+  const col=tcColor(), isPct=tcView==="rate", isAvg=tcView==="avg";
+  const pts=data.map(r=>({d:r.d,kills:r.kills,rate:100*(r.with_drops||0)/r.kills,avg:(r.drops||0)/r.kills,
+    cnt:{semi:r.semi,charged:r.charged,over:r.over,mega:r.mega},
+    per:{semi:100*r.semi/r.kills,charged:100*r.charged/r.kills,over:100*r.over/r.kills,mega:100*r.mega/r.kills},
+    y:tcVal(r)}));
   const cw=host.clientWidth||760;
-  const W=Math.max(320,Math.min(cw,1100)), H=cw<480?Math.round(W*0.62):280;
-  const padL=44,padR=14,padT=14,padB=34, iw=W-padL-padR, ih=H-padT-padB, n=pts.length;
+  const W=Math.max(300,Math.min(cw,1100)), H=cw<480?Math.round(W*0.66):260;
+  const padL=42,padR=14,padT=14,padB=34, iw=W-padL-padR, ih=H-padT-padB, n=pts.length;
   let maxY=-Infinity,minY=Infinity; pts.forEach(p=>{ if(p.y>maxY)maxY=p.y; if(p.y<minY)minY=p.y; });
-  const span=(maxY-minY)||(tcMetric==="rate"?5:0.2);
+  const span=(maxY-minY)||(isAvg?0.2:5);
   let lo=Math.max(0,minY-span*0.45), hi=maxY+span*0.45;
-  if(tcMetric==="rate") hi=Math.min(100,hi);
-  if(hi-lo<(tcMetric==="rate"?4:0.1)) hi=lo+(tcMetric==="rate"?4:0.1);
+  if(isPct) hi=Math.min(100,hi);
+  if(hi-lo<(isAvg?0.1:2)) hi=lo+(isAvg?0.1:2);
   const X=i=> padL+(n===1?iw/2:iw*i/(n-1));
   const Y=v=> padT+ih*(1-(v-lo)/(hi-lo));
   let grid="",yl="";
-  for(let g=0;g<=4;g++){ const v=lo+(hi-lo)*g/4,y=Y(v); grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#ffffff12"/>`; const lab=tcMetric==="rate"?v.toFixed(0)+"%":v.toFixed(2); yl+=`<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" fill="#7a6f8a" font-size="9" font-family="Outfit">${lab}</text>`; }
+  for(let g=0;g<=4;g++){ const v=lo+(hi-lo)*g/4,y=Y(v); grid+=`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="#ffffff12"/>`; const lab=isPct?v.toFixed(0)+"%":(isAvg?v.toFixed(2):v.toFixed(v<10?1:0)); yl+=`<text x="${padL-7}" y="${(y+3).toFixed(1)}" text-anchor="end" fill="#7a6f8a" font-size="9" font-family="Outfit">${lab}</text>`; }
   let xl=""; const step=Math.max(1,Math.ceil(n/6));
   pts.forEach((p,i)=>{ if(i%step===0||i===n-1){ const dt=new Date(p.d); xl+=`<text x="${X(i).toFixed(1)}" y="${H-padB+16}" text-anchor="middle" fill="#7a6f8a" font-size="9" font-family="Outfit">${dt.getMonth()+1}/${dt.getDate()}</text>`; } });
   const lp=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p.y).toFixed(1)}`).join(" ");
@@ -587,7 +597,10 @@ function paintTierChart(){
   const svgEl=document.getElementById("tcsvg"),tip=document.getElementById("tctip"),guide=document.getElementById("tcguide"),gd=document.getElementById("tcdots");
   function showAt(i){ const p=pts[i],x=X(i); guide.setAttribute("x1",x); guide.setAttribute("x2",x); guide.style.opacity="1";
     gd.innerHTML=`<circle cx="${x.toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4" fill="${col}" stroke="#0b0710" stroke-width="1.6"/>`;
-    tip.innerHTML=`<div class="td">${new Date(p.d).toLocaleDateString(undefined,{month:'short',day:'numeric'})} \u00b7 ${p.kills} kills</div><div class="tr"><span><span class="sw" style="background:#c6ff3a"></span>Drop rate</span><b>${p.rate.toFixed(1)}%</b></div><div class="tr"><span><span class="sw" style="background:#34d3ee"></span>Avg / kill</span><b>${p.avg.toFixed(2)}</b></div>`;
+    let body;
+    if(tcView==="rate"||tcView==="avg"){ body=`<div class="tr"><span><span class="sw" style="background:#c6ff3a"></span>Drop rate</span><b>${p.rate.toFixed(1)}%</b></div><div class="tr"><span><span class="sw" style="background:#34d3ee"></span>Avg / kill</span><b>${p.avg.toFixed(2)}</b></div>`; }
+    else { const lbl=(TC_VIEWS.find(v=>v[0]===tcView)||[])[1]; body=`<div class="tr"><span><span class="sw" style="background:${col}"></span>${lbl}</span><b>${p.per[tcView].toFixed(1)} <span style="color:var(--dim2);font-weight:400">/100 (${p.cnt[tcView]})</span></b></div>`; }
+    tip.innerHTML=`<div class="td">${new Date(p.d).toLocaleDateString(undefined,{month:'short',day:'numeric'})} \u00b7 ${p.kills} kills</div>`+body;
     const r=svgEl.getBoundingClientRect(); tip.style.left=((x/W)*r.width)+"px"; tip.style.top=(((Y(p.y)/H)*r.height)-12)+"px"; tip.style.opacity="1";
   }
   function hide(){ guide.style.opacity="0"; tip.style.opacity="0"; gd.innerHTML=""; }
