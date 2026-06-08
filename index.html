@@ -351,6 +351,8 @@ const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 
 // Add a line at the TOP each time you change something. [label, what changed]
 const CHANGELOG=[
+  ["Jun 8","Filter your profile stats by kill type"],
+  ["Jun 8","New badges: Super Jackpot, rank tiers, Chaos Master + more"],
   ["Jun 7","Official mo.co core icons + gem art"],
   ["Jun 7","Tap-to-log: pick a core, tap to upgrade tier"],
   ["Jun 6","Hunter ranks & levels added"],
@@ -401,7 +403,7 @@ function saveTokens(t){ try{ localStorage.setItem("moco_tokens",JSON.stringify(t
 // ===== Discord auth + handle claim =====
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 let session=null, myClaim=null, VERIFIED=new Set();
-let COMM={kills:0,drops:0}, COMMKT={}, cardData=null;
+let COMM={kills:0,drops:0}, COMMKT={}, cardData=null, PF=null;
 function authHeaders(){
   const tok = session ? session.access_token : SUPABASE_KEY;
   return {apikey:SUPABASE_KEY, Authorization:"Bearer "+tok, "Content-Type":"application/json"};
@@ -787,20 +789,24 @@ async function renderProfile(){
 
   let html=`<div class="card wide">
     <div class="h3">${esc(h)}${vbadge(h)}${m.rank?` · rank #${m.rank} / ${m.contributors}`:``}${back}</div>
+    <div class="chips" id="pfChips" style="margin-bottom:6px"></div>
     <div class="k4">
-      <div class="kpi"><div class="l">Kills</div><div class="v c">${m.kills.toLocaleString()}</div></div>
-      <div class="kpi"><div class="l">Drops</div><div class="v">${m.drops.toLocaleString()}</div></div>
-      <div class="kpi"><div class="l">Avg / kill</div><div class="v">${(m.kills?m.drops/m.kills:0).toFixed(2)}</div></div>
-      <div class="kpi"><div class="l">Drop rate</div><div class="v c">${(rate*100).toFixed(1)}%</div></div>
+      <div class="kpi"><div class="l">Kills</div><div class="v c" id="pfK">—</div></div>
+      <div class="kpi"><div class="l">Drops</div><div class="v" id="pfD">—</div></div>
+      <div class="kpi"><div class="l">Avg / kill</div><div class="v" id="pfA">—</div></div>
+      <div class="kpi"><div class="l">Drop rate</div><div class="v c" id="pfR">—</div></div>
     </div>
-    <p class="note" style="margin-top:2px">95% confidence: ${(lo*100).toFixed(0)}–${(hi*100).toFixed(0)}% — the true drop rate range given ${m.kills.toLocaleString()} kills.</p>
+    <p class="note" id="pfConf" style="margin-top:2px"></p>
     <button class="btn g mini" style="margin-top:12px" onclick="shareCard()">Share stat card</button>
   </div>`;
 
-  let pByType={}, coreTiers={};
+  let pByType={}, coreTiers={}, detail={};
   try{ const prows=await rest("logs?select=difficulty,drop_count,drops&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&limit=20000");
-    (prows||[]).forEach(r=>{ const t=r.difficulty||"normal"; (pByType[t]=pByType[t]||{k:0,wd:0}); pByType[t].k++; if((r.drop_count||0)>0) pByType[t].wd++;
-      (Array.isArray(r.drops)?r.drops:[]).forEach(x=>{ if(x&&x.core) (coreTiers[x.core]=coreTiers[x.core]||new Set()).add(x.tier); }); }); }catch(e){}
+    (prows||[]).forEach(r=>{ const t=r.difficulty||"normal"; const arr=Array.isArray(r.drops)?r.drops:[]; const nd=arr.length||(r.drop_count||0);
+      (pByType[t]=pByType[t]||{k:0,wd:0}); pByType[t].k++; if(nd>0) pByType[t].wd++;
+      for(const key of ["all",t]){ const o=(detail[key]=detail[key]||{kills:0,wd:0,drops:0,tiers:{},cores:{}}); o.kills++; if(nd>0)o.wd++; o.drops+=nd; }
+      arr.forEach(x=>{ if(!x)return; if(x.core)(coreTiers[x.core]=coreTiers[x.core]||new Set()).add(x.tier);
+        for(const key of ["all",t]){ const o=detail[key]; if(x.tier)o.tiers[x.tier]=(o.tiers[x.tier]||0)+1; if(x.core)o.cores[x.core]=(o.cores[x.core]||0)+1; } }); }); }catch(e){}
   const fullCore=Object.values(coreTiers).some(s=>s.has("semi")&&s.has("charged")&&s.has("over")&&s.has("mega"));
   const T_=m.tiers||{}, S_=m.streaks||{}, vrf=VERIFIED.has(String(h).toLowerCase());
   const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
@@ -866,25 +872,14 @@ async function renderProfile(){
   }).join("");
   if(lt) html+=`<div class="card"><div class="h3">Luck by kill type</div>${lt}<p class="note" style="margin-top:10px">Drop rate vs community per type, in points. Types under 10 kills are greyed — too small to trust.</p></div>`;
 
-  const tiers=m.tiers||{}, td=m.drops||0, maxT=Math.max(...TIERS.map(t=>tiers[t[0]]||0),1);
-  const tierHTML=TIERS.map(([k,l,c])=>{
-    const v=tiers[k]||0,pc=td?100*v/td:0;
-    return `<div class="tier"><span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l}</span>
-      <span class="trk"><span class="fl" style="width:${100*v/maxT}%;background:linear-gradient(90deg,${c},${c}aa)"></span></span>
-      <span class="n">${v}</span><span class="p">${pc.toFixed(1)}%</span><span class="o">${v?"1/"+Math.round(m.kills/v):"—"}</span></div>`;}).join("");
-  html+=`<div class="card"><div class="h3">${who} tier breakdown</div>${tierHTML}</div>`;
+  const tiers=m.tiers||{}, td=m.drops||0;
+  html+=`<div class="card"><div class="h3" id="pfTierH">${who} tier breakdown</div><div id="pfTiers"></div></div>`;
 
   const cores=m.cores||{}, commCores=(m.community&&m.community.cores)||{};
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1);
   const _lv=hunterLevel(levelScore({kills:m.kills,drops:m.drops,mega:tiers.mega||0,over:tiers.over||0,best_multi:st.best_multi||0,with_drops:Math.round(rate*m.kills)})), _rt=rankTier(_lv);
   cardData={handle:h,verified:VERIFIED.has(String(h).toLowerCase()),rank:m.rank,contributors:m.contributors,kills:m.kills,drops:m.drops,rate:rate,avg:(m.kills?m.drops/m.kills:0),luck:luck,luckCol:luckCol,cores:ce,tiers:{semi:tiers.semi||0,charged:tiers.charged||0,over:tiers.over||0,mega:tiers.mega||0},bestMulti:st.best_multi||0,dry:st.longest_dry||0,level:_lv,rankName:_rt[0],rankCol:_rt[1]};
-  const coreHTML=ce.map(([c,v])=>{
-    const pr=m.kills?100*v/m.kills:0, cr=cKills?100*(commCores[c]||0)/cKills:0, col=CORE_COLOR[c]||"#8b6cff";
-    const dCol=pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)";
-    return `<div class="core"><span class="nm"><span class="cmini">${coreGridIcon(c)}</span>${coreLabel(c)}</span>
-      <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
-      <span class="cn">${v}</span><span class="cr" style="color:${dCol}">${pr.toFixed(1)}%</span><span class="cx">vs ${cr.toFixed(1)}%</span></div>`;}).join("");
-  html+=`<div class="card"><div class="h3">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div>${coreHTML}</div>`;
+  html+=`<div class="card"><div class="h3" id="pfCoreH">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div><div id="pfCores"></div></div>`;
 
   const tk_=tokens();
   let rec=[]; try{ rec=await rest("logs?select=id,difficulty,drops,created_at&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&order=created_at.desc&limit=20"); }catch(e){ rec=m.recent||[]; }
@@ -900,6 +895,40 @@ async function renderProfile(){
   const cur=Math.pow(lvl*1.6,2), nxt=Math.pow((lvl+1)*1.6,2), prog=Math.max(0,Math.min(1,(lvScore-cur)/(nxt-cur)));
   html=`<div class="card wide rankcard"><div class="rkemb" style="--tc:${tr[1]};background:${tr[1]}1a" data-tip="Level blends grind (kills/drops) with luck — Mega &amp; OC pulls and a hot drop rate boost it"><div class="rklv">${lvl}</div></div><div class="rkmeta"><div class="rktier" style="color:${tr[1]}">${tr[0]}</div><div class="rksub">Hunter Rank · Lv ${lvl}</div><div class="rkbar"><span style="width:${(prog*100).toFixed(0)}%;background:${tr[1]}"></span></div><div class="rknext">${Math.max(0,Math.ceil(nxt-lvScore)).toLocaleString()} XP to Lv ${lvl+1}</div></div></div>`+html;
   wrap.innerHTML=html;
+  PF={detail:detail, cKills:cKills, commCores:commCores, who:who, ptype:"all"};
+  buildPFChips(); paintPType("all");
+}
+function buildPFChips(){
+  const el=document.getElementById("pfChips"); if(!el||!PF) return;
+  const types=KT.filter(k=>PF.detail[k[0]]);
+  el.innerHTML=chipHTML(["all","All types","#c6ff3a"],PF.ptype)+types.map(k=>chipHTML(k,PF.ptype)).join("");
+  el.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ PF.ptype=c.dataset.kt; buildPFChips(); paintPType(PF.ptype); });
+}
+function paintPType(t){
+  if(!PF) return;
+  const D=PF.detail[t]||{kills:0,wd:0,drops:0,tiers:{},cores:{}};
+  const kills=D.kills||0, drops=D.drops||0, wd=D.wd||0, rate=kills?wd/kills:0, [lo,hi]=wilson(wd,kills);
+  document.getElementById("pfK").textContent=kills.toLocaleString();
+  document.getElementById("pfD").textContent=drops.toLocaleString();
+  document.getElementById("pfA").textContent=(kills?drops/kills:0).toFixed(2);
+  document.getElementById("pfR").textContent=(rate*100).toFixed(1)+"%";
+  const lbl=t==="all"?"all kill types":((KTMAP[t]?KTMAP[t][1]:t)+" kills");
+  document.getElementById("pfConf").textContent= kills? `95% confidence: ${(lo*100).toFixed(0)}–${(hi*100).toFixed(0)}% — true drop rate over ${kills.toLocaleString()} ${lbl}.` : `No ${lbl} logged yet.`;
+  const tiers=D.tiers||{}, maxT=Math.max(...TIERS.map(x=>tiers[x[0]]||0),1);
+  document.getElementById("pfTiers").innerHTML=TIERS.map(([k,l,c])=>{ const v=tiers[k]||0, pc=drops?100*v/drops:0;
+    return `<div class="tier"><span class="badge" style="background:${c}22;color:${c};border:1px solid ${c}55">${l}</span>
+      <span class="trk"><span class="fl" style="width:${100*v/maxT}%;background:linear-gradient(90deg,${c},${c}aa)"></span></span>
+      <span class="n">${v}</span><span class="p">${pc.toFixed(1)}%</span><span class="o">${v&&kills?"1/"+Math.round(kills/v):"—"}</span></div>`;}).join("");
+  const cores=D.cores||{}, ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1), showC=(t==="all");
+  document.getElementById("pfCores").innerHTML=ce.map(([c,v])=>{ const pr=kills?100*v/kills:0, col=CORE_COLOR[c]||"#8b6cff";
+    const cr=showC&&PF.cKills?100*(PF.commCores[c]||0)/PF.cKills:0, dCol=showC?(pr>cr+0.4?"#2fd07a":pr<cr-0.4?"#ff6b47":"var(--cyan)"):"var(--cyan)";
+    const cx=showC?`<span class="cx">vs ${cr.toFixed(1)}%</span>`:`<span class="cx"></span>`;
+    return `<div class="core"><span class="nm"><span class="cmini">${coreGridIcon(c)}</span>${coreLabel(c)}</span>
+      <span class="ct"><span class="cf" style="width:${100*v/maxC}%;background:linear-gradient(90deg,${col},${col}bb)"></span></span>
+      <span class="cn">${v}</span><span class="cr" style="color:${dCol}">${pr.toFixed(1)}%</span>${cx}</div>`;}).join("");
+  const suf=t==="all"?"":` · ${KTMAP[t]?KTMAP[t][1]:t}`;
+  const th=document.getElementById("pfTierH"); if(th) th.textContent=`${PF.who} tier breakdown${suf}`;
+  const ch=document.getElementById("pfCoreH"); if(ch) ch.innerHTML=`${PF.who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· ${showC?"% of kills vs community":"% of "+(KTMAP[t]?KTMAP[t][1]:t)+" kills"}</span>`;
 }
 function rr(x,X,Y,w,h,r){x.beginPath();x.moveTo(X+r,Y);x.arcTo(X+w,Y,X+w,Y+h,r);x.arcTo(X+w,Y+h,X,Y+h,r);x.arcTo(X,Y+h,X,Y,r);x.arcTo(X,Y,X+w,Y,r);x.closePath();}
 async function shareCard(){
