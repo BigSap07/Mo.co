@@ -352,6 +352,8 @@ const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 
 // Add a line at the TOP each time you change something. [label, what changed]
 const CHANGELOG=[
+  ["Jun 8","Best-drops showcase + logging pace on profiles"],
+  ["Jun 8","Core-colored tap VFX + live session tracker"],
   ["Jun 8","Filter your profile stats by kill type"],
   ["Jun 8","New badges: Super Jackpot, rank tiers, Chaos Master + more"],
   ["Jun 7","Official mo.co core icons + gem art"],
@@ -846,19 +848,21 @@ async function renderProfile(){
     <button class="btn g mini" style="margin-top:12px" onclick="shareCard()">Share stat card</button>
   </div>`;
 
-  let pByType={}, coreTiers={}, detail={}, times=[], rare={td_mega:0,td_over:0,wk_mega:0,wk_over:0};
-  const _ds=(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})(), _ws=Date.now()-7*864e5;
+  let pByType={}, coreTiers={}, detail={}, times=[], rare={td_mega:0,td_over:0,wk_mega:0,wk_over:0}, bestKills=[];
+  const _ds=(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})(), _ws=Date.now()-7*864e5, TW={mega:8,over:4,charged:2,semi:1};
   try{ const prows=await rest("logs?select=difficulty,drop_count,drops,created_at&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&limit=20000");
     (prows||[]).forEach(r=>{ const t=r.difficulty||"normal"; const arr=Array.isArray(r.drops)?r.drops:[]; const nd=arr.length||(r.drop_count||0);
-      const ts=new Date(r.created_at).getTime(); if(!isNaN(ts)) times.push(ts);
+      const ts=new Date(r.created_at).getTime(); if(!isNaN(ts)) times.push(ts); let _sc=0;
       (pByType[t]=pByType[t]||{k:0,wd:0}); pByType[t].k++; if(nd>0) pByType[t].wd++;
       for(const key of ["all",t]){ const o=(detail[key]=detail[key]||{kills:0,wd:0,drops:0,tiers:{},cores:{}}); o.kills++; if(nd>0)o.wd++; o.drops+=nd; }
-      arr.forEach(x=>{ if(!x)return; if(x.core)(coreTiers[x.core]=coreTiers[x.core]||new Set()).add(x.tier);
+      arr.forEach(x=>{ if(!x)return; _sc+=TW[x.tier]||0; if(x.core)(coreTiers[x.core]=coreTiers[x.core]||new Set()).add(x.tier);
         const isM=x.tier==="mega",isO=x.tier==="over"; if((isM||isO)&&!isNaN(ts)){ if(ts>=_ds){isM?rare.td_mega++:rare.td_over++;} if(ts>=_ws){isM?rare.wk_mega++:rare.wk_over++;} }
-        for(const key of ["all",t]){ const o=detail[key]; if(x.tier)o.tiers[x.tier]=(o.tiers[x.tier]||0)+1; if(x.core)o.cores[x.core]=(o.cores[x.core]||0)+1; } }); }); }catch(e){}
+        for(const key of ["all",t]){ const o=detail[key]; if(x.tier)o.tiers[x.tier]=(o.tiers[x.tier]||0)+1; if(x.core)o.cores[x.core]=(o.cores[x.core]||0)+1; } });
+      if(arr.length) bestKills.push({sc:_sc,drops:arr,t:t,ts:ts}); }); }catch(e){}
   times.sort((a,b)=>a-b); let _activeMs=0; for(let i=1;i<times.length;i++){ const g=times[i]-times[i-1]; if(g>0&&g<=300000)_activeMs+=g; }
   const paceMin=_activeMs>0?times.length/(_activeMs/60000):null;
   const paceTxt=paceMin==null?"—":(paceMin>=1?paceMin.toFixed(1)+" / min":(paceMin*60).toFixed(1)+" / hr");
+  bestKills.sort((a,b)=> b.sc-a.sc || b.ts-a.ts); const topKills=bestKills.slice(0,6);
   const fullCore=Object.values(coreTiers).some(s=>s.has("semi")&&s.has("charged")&&s.has("over")&&s.has("mega"));
   const T_=m.tiers||{}, S_=m.streaks||{}, vrf=VERIFIED.has(String(h).toLowerCase());
   const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
@@ -954,7 +958,8 @@ async function renderProfile(){
       <div class="kpi"><div class="l">Mega · 7 days</div><div class="v" style="color:#f5a623">${rare.wk_mega}</div></div>
       <div class="kpi"><div class="l">OC · 7 days</div><div class="v" style="color:#c887f7">${rare.wk_over}</div></div>
     </div></div>`;
-  wrap.innerHTML = rankCard+badgesCard+kpiCard+tierCard+coresCard+rareCard+luckCard+luckTypeCard+recentCard;
+  const bestCard = topKills.length ? `<div class="card"><div class="h3">Best drops <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· top pulls</span></div><div class="feed">`+topKills.map(k=>{ const kt=KTMAP[k.t]||["?","?","#8492a6"]; return `<div class="fi"><span class="kt" style="background:${kt[2]}22;color:${kt[2]}">${kt[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(k.drops)}</span><span class="ago">${timeAgo(new Date(k.ts).toISOString())}</span></div>`; }).join("")+`</div></div>` : "";
+  wrap.innerHTML = rankCard+badgesCard+kpiCard+tierCard+coresCard+rareCard+bestCard+luckCard+luckTypeCard+recentCard;
   PF={detail:detail, cKills:cKills, commCores:commCores, who:who, ptype:"all"};
   buildPFChips(); paintPType("all");
 }
