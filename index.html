@@ -274,6 +274,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
         <button class="btn g" onclick="logKill(true)">No drops</button>
         <span class="st" id="status"></span>
       </div>
+      <div class="note" id="sessStrip" style="display:none;margin-top:13px;border-top:1px solid var(--line);padding-top:11px"></div>
       <p class="note" style="margin-top:13px">No drop rows = a 0-drop kill. Each row is one core that dropped, with its charge tier.</p>
     </div>
     <div class="howto">
@@ -391,6 +392,7 @@ const BG_SRC="./moco_bg.jpg"; const BIGPAPA_SRC="./bigpapa.png";
 function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
 
 let logKT="normal", viewKT="all", lookupHandle=null;
+let SESS={start:0,last:0,kills:0}, sessTimer=null;
 let armedCore=null, dropList=[];
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
 const ok = !SUPABASE_URL.includes("YOUR-PROJECT");
@@ -531,6 +533,49 @@ function celebrate(level){
     setTimeout(()=>{try{ac.close()}catch(e){}},1600);
   }catch(e){}
 }
+const TIER_VFX={semi:{n:9,s:[3,6]},charged:{n:16,s:[5,9]},over:{n:26,s:[8,13]},mega:{n:42,s:[12,18]}};
+const TIER_ORD={semi:0,charged:1,over:2,mega:3};
+function coreBurst(drops){
+  const parts=[]; let best="semi";
+  drops.forEach(d=>{ const tv=TIER_VFX[d.tier]||TIER_VFX.semi, lvl=TIER_ORD[d.tier]||0; if(lvl>TIER_ORD[best])best=d.tier;
+    const col=CORE_COLOR[d.core]||"#c6ff3a";
+    for(let i=0;i<tv.n;i++){ const sp=4+Math.random()*11+lvl*2, ang=-Math.PI/2+(Math.random()-.5)*2.4;
+      parts.push({x:innerWidth/2+(Math.random()-.5)*120,y:innerHeight*0.34,vx:Math.cos(ang)*sp*(0.5+Math.random()),vy:Math.sin(ang)*sp-(4+Math.random()*8),g:.32+Math.random()*.2,s:tv.s[0]+Math.random()*(tv.s[1]-tv.s[0]),c:col,r:Math.random()*6.28,vr:(Math.random()-.5)*.45,a:1,sh:lvl>=2}); }
+  });
+  if(parts.length>260) parts.length=260;
+  const cv=document.createElement("canvas"); cv.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9999";
+  cv.width=innerWidth; cv.height=innerHeight; document.body.appendChild(cv);
+  const x=cv.getContext("2d"); let t0=performance.now();
+  (function frame(t){ const dt=Math.min(2.2,(t-t0)/16.7); t0=t; x.clearRect(0,0,cv.width,cv.height); let alive=false;
+    for(const p of parts){ p.vy+=p.g*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.r+=p.vr*dt; if(p.y>innerHeight*.45)p.a-=.011*dt;
+      if(p.a>0&&p.y<cv.height+24){ alive=true; x.save(); x.globalAlpha=Math.max(0,p.a); x.translate(p.x,p.y); x.rotate(p.r);
+        if(p.sh){x.shadowColor=p.c;x.shadowBlur=10;} x.fillStyle=p.c;
+        x.beginPath(); x.moveTo(0,-p.s); x.lineTo(p.s*.62,0); x.lineTo(0,p.s); x.lineTo(-p.s*.62,0); x.closePath(); x.fill(); x.restore(); } }
+    if(alive) requestAnimationFrame(frame); else cv.remove();
+  })(t0);
+  try{ const notes={charged:[659.25,987.77],over:[523.25,783.99,1046.5],mega:[523.25,659.25,783.99,1046.5]}[best]; if(!notes)return;
+    const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; const ac=new AC(),now=ac.currentTime;
+    notes.forEach((f,i)=>{ const o=ac.createOscillator(),gn=ac.createGain(); o.type="triangle"; o.frequency.value=f; const ts=now+i*0.08;
+      gn.gain.setValueAtTime(0,ts); gn.gain.linearRampToValueAtTime(0.07,ts+0.02); gn.gain.exponentialRampToValueAtTime(0.0001,ts+0.45); o.connect(gn).connect(ac.destination); o.start(ts); o.stop(ts+0.5); });
+    setTimeout(()=>{try{ac.close()}catch(e){}},1500);
+  }catch(e){}
+}
+function bumpSession(){
+  const now=Date.now();
+  if(SESS.last && now-SESS.last>600000){ SESS={start:0,last:0,kills:0}; }
+  if(!SESS.start) SESS.start=now;
+  SESS.kills++; SESS.last=now; renderSession();
+  if(sessTimer) clearInterval(sessTimer); sessTimer=setInterval(renderSession,20000);
+}
+function renderSession(){
+  const el=document.getElementById("sessStrip"); if(!el) return;
+  const now=Date.now();
+  if(!SESS.start || !SESS.kills || now-SESS.last>600000){ el.style.display="none"; if(sessTimer){clearInterval(sessTimer);sessTimer=null;} return; }
+  const mins=(SESS.last-SESS.start)/60000, kpm=(SESS.kills>=2&&mins>0)?SESS.kills/mins:null;
+  const a=timeAgo(new Date(SESS.last).toISOString()), ago=(a==="now"?"just now":a+" ago");
+  el.style.display="";
+  el.innerHTML=`<b style="color:var(--txt2)">This session</b> · ${SESS.kills} kill${SESS.kills>1?"s":""}`+(kpm!=null?` · <b style="color:var(--cyan)">${kpm.toFixed(1)}</b>/min`:"")+` · last ${ago}`;
+}
 async function renderPulse(){
   const el=document.getElementById("pulse"); if(!el) return;
   const since=new Date(); since.setHours(0,0,0,0);
@@ -557,7 +602,8 @@ async function logKill(noDrop){
     if(id!=null){ const t=tokens(); t[id]=token; saveTokens(t); }
     dropList=[]; buildLogInputs();
     st.textContent="✓ logged"; setTimeout(()=>st.textContent="",1400);
-    if(drops.some(d=>d.tier==="mega")) celebrate("mega"); else if(drops.some(d=>d.tier==="over")) celebrate("over");
+    bumpSession();
+    if(drops.length) coreBurst(drops);
     await load();
   }catch(e){
     let msg=e.message||""; try{ const j=JSON.parse(msg); msg=j.message||j.msg||msg; }catch(_){}
@@ -787,7 +833,7 @@ async function renderProfile(){
   const st=m.streaks||{};
   const who=isSelf?"Your":"Their";
 
-  let html=`<div class="card wide">
+  const kpiCard=`<div class="card wide">
     <div class="h3">${esc(h)}${vbadge(h)}${m.rank?` · rank #${m.rank} / ${m.contributors}`:``}${back}</div>
     <div class="chips" id="pfChips" style="margin-bottom:6px"></div>
     <div class="k4">
@@ -800,13 +846,19 @@ async function renderProfile(){
     <button class="btn g mini" style="margin-top:12px" onclick="shareCard()">Share stat card</button>
   </div>`;
 
-  let pByType={}, coreTiers={}, detail={};
-  try{ const prows=await rest("logs?select=difficulty,drop_count,drops&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&limit=20000");
+  let pByType={}, coreTiers={}, detail={}, times=[], rare={td_mega:0,td_over:0,wk_mega:0,wk_over:0};
+  const _ds=(()=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime();})(), _ws=Date.now()-7*864e5;
+  try{ const prows=await rest("logs?select=difficulty,drop_count,drops,created_at&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&limit=20000");
     (prows||[]).forEach(r=>{ const t=r.difficulty||"normal"; const arr=Array.isArray(r.drops)?r.drops:[]; const nd=arr.length||(r.drop_count||0);
+      const ts=new Date(r.created_at).getTime(); if(!isNaN(ts)) times.push(ts);
       (pByType[t]=pByType[t]||{k:0,wd:0}); pByType[t].k++; if(nd>0) pByType[t].wd++;
       for(const key of ["all",t]){ const o=(detail[key]=detail[key]||{kills:0,wd:0,drops:0,tiers:{},cores:{}}); o.kills++; if(nd>0)o.wd++; o.drops+=nd; }
       arr.forEach(x=>{ if(!x)return; if(x.core)(coreTiers[x.core]=coreTiers[x.core]||new Set()).add(x.tier);
+        const isM=x.tier==="mega",isO=x.tier==="over"; if((isM||isO)&&!isNaN(ts)){ if(ts>=_ds){isM?rare.td_mega++:rare.td_over++;} if(ts>=_ws){isM?rare.wk_mega++:rare.wk_over++;} }
         for(const key of ["all",t]){ const o=detail[key]; if(x.tier)o.tiers[x.tier]=(o.tiers[x.tier]||0)+1; if(x.core)o.cores[x.core]=(o.cores[x.core]||0)+1; } }); }); }catch(e){}
+  times.sort((a,b)=>a-b); let _activeMs=0; for(let i=1;i<times.length;i++){ const g=times[i]-times[i-1]; if(g>0&&g<=300000)_activeMs+=g; }
+  const paceMin=_activeMs>0?times.length/(_activeMs/60000):null;
+  const paceTxt=paceMin==null?"—":(paceMin>=1?paceMin.toFixed(1)+" / min":(paceMin*60).toFixed(1)+" / hr");
   const fullCore=Object.values(coreTiers).some(s=>s.has("semi")&&s.has("charged")&&s.has("over")&&s.has("mega"));
   const T_=m.tiers||{}, S_=m.streaks||{}, vrf=VERIFIED.has(String(h).toLowerCase());
   const coresHit=CORES.filter(x=>((m.cores||{})[x]||0)>0).length;
@@ -850,9 +902,9 @@ async function renderProfile(){
   const bHTML=BADGES.map(b=>`<div class="bdg ${b.e?"earned":"locked"}" style="${b.e?`border-color:${b.c}66;box-shadow:0 0 16px -9px ${b.c}`:""}" data-tip="${b.n} — ${b.e?"unlocked":"locked · "+b.r}">
     <span class="ic" style="background:${b.e?b.c+"22":"#ffffff10"};color:${b.e?b.c:"var(--dim)"}">${b.g}</span>
     <span><span class="bn" style="${b.e?`color:${b.c}`:""}">${b.n}</span><br><span class="br">${b.r}</span></span></div>`).join("");
-  html+=`<div class="card wide"><div class="h3">Badges <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· ${earnedN}/${BADGES.length}</span></div><div class="bgrid">${bHTML}</div></div>`;
+  const badgesCard=`<div class="card wide"><div class="h3">Badges <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· ${earnedN}/${BADGES.length}</span></div><div class="bgrid">${bHTML}</div></div>`;
 
-  html+=`<div class="card">
+  const luckCard=`<div class="card">
     <div class="h3">Luck &amp; streaks</div>
     <div class="k4">
       <div class="kpi"><div class="l">Luck vs community</div><div class="v" style="color:${luckCol}">${luck>=0?"+":""}${luck.toFixed(1)}</div></div>
@@ -861,6 +913,7 @@ async function renderProfile(){
       <div class="kpi"><div class="l">Best multi-drop</div><div class="v c">${st.best_multi||0}</div></div>
     </div>
     <p class="note" style="margin-top:2px">Luck = your drop rate (${(rate*100).toFixed(1)}%) minus community (${(cRate*100).toFixed(1)}%), in points, across all kill types combined — see the per-type split below. Dry streak = kills in a row with no drop.</p>
+    <p class="note" style="margin-top:6px">Logging pace: <b style="color:var(--cyan)">${paceTxt}</b> — active kills only, breaks over 5 min excluded.</p>
   </div>`;
 
   for(const k of KT){ const t=k[0]; if(pByType[t] && !(t in COMMKT)){ try{ const s=await rpc("get_stats",{p_kt:t}); COMMKT[t]={kills:s.kills||0,wd:s.with_drops||0}; }catch(e){ COMMKT[t]={kills:0,wd:0}; } } }
@@ -870,16 +923,16 @@ async function renderProfile(){
     const col=small?"var(--dim)":(lk>1.5?"#2fd07a":lk<-1.5?"#ff6b47":"var(--txt2)");
     return `<div class="lt"><span class="t" style="color:${k[2]}">${k[1]}</span><span class="k">${p.k} kills</span><span class="r">${(pr*100).toFixed(1)}%</span><span class="lu" style="color:${col}">${lk>=0?"+":""}${lk.toFixed(1)}</span></div>`;
   }).join("");
-  if(lt) html+=`<div class="card"><div class="h3">Luck by kill type</div>${lt}<p class="note" style="margin-top:10px">Drop rate vs community per type, in points. Types under 10 kills are greyed — too small to trust.</p></div>`;
+  const luckTypeCard = lt ? `<div class="card"><div class="h3">Luck by kill type</div>${lt}<p class="note" style="margin-top:10px">Drop rate vs community per type, in points. Types under 10 kills are greyed — too small to trust.</p></div>` : "";
 
   const tiers=m.tiers||{}, td=m.drops||0;
-  html+=`<div class="card"><div class="h3" id="pfTierH">${who} tier breakdown</div><div id="pfTiers"></div></div>`;
+  const tierCard=`<div class="card"><div class="h3" id="pfTierH">${who} tier breakdown</div><div id="pfTiers"></div></div>`;
 
   const cores=m.cores||{}, commCores=(m.community&&m.community.cores)||{};
   const ce=CORES.map(c=>[c,cores[c]||0]).sort((a,b)=>b[1]-a[1]), maxC=Math.max(...ce.map(e=>e[1]),1);
   const _lv=hunterLevel(levelScore({kills:m.kills,drops:m.drops,mega:tiers.mega||0,over:tiers.over||0,best_multi:st.best_multi||0,with_drops:Math.round(rate*m.kills)})), _rt=rankTier(_lv);
   cardData={handle:h,verified:VERIFIED.has(String(h).toLowerCase()),rank:m.rank,contributors:m.contributors,kills:m.kills,drops:m.drops,rate:rate,avg:(m.kills?m.drops/m.kills:0),luck:luck,luckCol:luckCol,cores:ce,tiers:{semi:tiers.semi||0,charged:tiers.charged||0,over:tiers.over||0,mega:tiers.mega||0},bestMulti:st.best_multi||0,dry:st.longest_dry||0,level:_lv,rankName:_rt[0],rankCol:_rt[1]};
-  html+=`<div class="card"><div class="h3" id="pfCoreH">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div><div id="pfCores"></div></div>`;
+  const coresCard=`<div class="card"><div class="h3" id="pfCoreH">${who} cores <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none">· % of kills vs community</span></div><div id="pfCores"></div></div>`;
 
   const tk_=tokens();
   let rec=[]; try{ rec=await rest("logs?select=id,difficulty,drops,created_at&handle=eq."+encodeURIComponent(h)+"&hidden=is.false&order=created_at.desc&limit=20"); }catch(e){ rec=m.recent||[]; }
@@ -888,13 +941,20 @@ async function renderProfile(){
     const del=(isSelf && r.id!=null && tk_[r.id])?`<span class="x" title="delete this log" style="margin-left:10px" onclick="deleteLog(${r.id})">×</span>`:"";
     return `<div class="fi"><span class="kt" style="background:${k[2]}22;color:${k[2]}">${k[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(d)}</span><span class="ago">${timeAgo(r.created_at)}</span>${del}</div>`;
   }).join("");
-  html+=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
+  const recentCard=`<div class="card"><div class="h3">Recent kills</div><div class="feed">${feed||'<div class="note">No kills.</div>'}</div></div>`;
 
   const lvScore=levelScore({kills:m.kills,drops:m.drops,mega:T_.mega,over:T_.over,best_multi:S_.best_multi,with_drops:m.with_drops});
   const lvl=hunterLevel(lvScore), tr=rankTier(lvl);
   const cur=Math.pow(lvl*1.6,2), nxt=Math.pow((lvl+1)*1.6,2), prog=Math.max(0,Math.min(1,(lvScore-cur)/(nxt-cur)));
-  html=`<div class="card wide rankcard"><div class="rkemb" style="--tc:${tr[1]};background:${tr[1]}1a" data-tip="Level blends grind (kills/drops) with luck — Mega &amp; OC pulls and a hot drop rate boost it"><div class="rklv">${lvl}</div></div><div class="rkmeta"><div class="rktier" style="color:${tr[1]}">${tr[0]}</div><div class="rksub">Hunter Rank · Lv ${lvl}</div><div class="rkbar"><span style="width:${(prog*100).toFixed(0)}%;background:${tr[1]}"></span></div><div class="rknext">${Math.max(0,Math.ceil(nxt-lvScore)).toLocaleString()} XP to Lv ${lvl+1}</div></div></div>`+html;
-  wrap.innerHTML=html;
+  const rankCard=`<div class="card wide rankcard"><div class="rkemb" style="--tc:${tr[1]};background:${tr[1]}1a" data-tip="Level blends grind (kills/drops) with luck — Mega &amp; OC pulls and a hot drop rate boost it"><div class="rklv">${lvl}</div></div><div class="rkmeta"><div class="rktier" style="color:${tr[1]}">${tr[0]}</div><div class="rksub">Hunter Rank · Lv ${lvl}</div><div class="rkbar"><span style="width:${(prog*100).toFixed(0)}%;background:${tr[1]}"></span></div><div class="rknext">${Math.max(0,Math.ceil(nxt-lvScore)).toLocaleString()} XP to Lv ${lvl+1}</div></div></div>`;
+  const rareCard=`<div class="card"><div class="h3">Mega &amp; OC drops <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· recent rares</span></div>
+    <div class="k4">
+      <div class="kpi"><div class="l">Mega · today</div><div class="v" style="color:#f5a623">${rare.td_mega}</div></div>
+      <div class="kpi"><div class="l">OC · today</div><div class="v" style="color:#c887f7">${rare.td_over}</div></div>
+      <div class="kpi"><div class="l">Mega · 7 days</div><div class="v" style="color:#f5a623">${rare.wk_mega}</div></div>
+      <div class="kpi"><div class="l">OC · 7 days</div><div class="v" style="color:#c887f7">${rare.wk_over}</div></div>
+    </div></div>`;
+  wrap.innerHTML = rankCard+badgesCard+kpiCard+tierCard+coresCard+rareCard+luckCard+luckTypeCard+recentCard;
   PF={detail:detail, cKills:cKills, commCores:commCores, who:who, ptype:"all"};
   buildPFChips(); paintPType("all");
 }
