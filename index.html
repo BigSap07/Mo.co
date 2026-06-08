@@ -1,6 +1,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mo.co Drop Tracker</title>
+<title>mo.co Drop Tracker — Community Upgrade Core Drop Rates</title>
+<meta name="description" content="Crowdsourced, community-pooled upgrade-core drop rates for mo.co. Log your kills across every boss, track tier odds (Semi to Megacharged), and compare your luck against the community.">
+<meta name="theme-color" content="#0b0710">
+<link rel="icon" href="./favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="mo.co Drop Tracker">
+<meta property="og:title" content="mo.co Drop Tracker — Community Upgrade Core Drop Rates">
+<meta property="og:description" content="Crowdsourced upgrade-core drop rates for mo.co. Log kills across every boss, track tier odds, compare your luck against the community.">
+<meta property="og:url" content="https://bigsap07.github.io/Mo.co/">
+<meta property="og:image" content="https://bigsap07.github.io/Mo.co/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="mo.co Drop Tracker — Community Upgrade Core Drop Rates">
+<meta name="twitter:description" content="Crowdsourced upgrade-core drop rates for mo.co. Log kills, track tier odds, compare your luck.">
+<meta name="twitter:image" content="https://bigsap07.github.io/Mo.co/og.jpg">
 <!--
   mo.co community drop tracker — single file, no build step, no SDK.
   SETUP: 1) run the `logs` table SQL  2) fill SUPABASE_URL + SUPABASE_KEY below
@@ -517,7 +534,7 @@ async function renderPulse(){
   const since=new Date(); since.setHours(0,0,0,0);
   let p=null; try{ p=await rpc("get_pulse",{p_since:since.toISOString()}); }catch(e){ el.innerHTML=""; return; }
   const n=(p&&p.kills)||0;
-  if(!n){ el.innerHTML=`<span class="pdot"></span> Quiet so far today — be the first to log a Big Papa run.`; return; }
+  if(!n){ el.innerHTML=`<span class="pdot"></span> Quiet so far today — be the first to log a run.`; return; }
   const rate=100*((p.with_drops||0)/n);
   const tail = p.lucky_handle?`luckiest: <b style="color:var(--cyan)">${esc(p.lucky_handle)}</b>${vbadge(p.lucky_handle)}` : (p.active_handle?`most active: <b style="color:var(--cyan)">${esc(p.active_handle)}</b>${vbadge(p.active_handle)} (${p.active_kills})`:"");
   el.innerHTML=`<span class="pdot"></span> <b>Today:</b> ${n.toLocaleString()} kills logged · ${rate.toFixed(0)}% drop rate${tail?` · ${tail}`:""}`;
