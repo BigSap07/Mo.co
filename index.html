@@ -25,6 +25,7 @@ body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--m);font-varian
    radial-gradient(900px 520px at 82% -10%,rgba(255,61,166,.12),transparent 58%),
    radial-gradient(760px 520px at -8% 112%,rgba(198,255,58,.09),transparent 60%),
    var(--bg);background-attachment:fixed;-webkit-font-smoothing:antialiased}
+.bgart{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(1100px 600px at 80% -8%,rgba(255,61,166,.10),transparent 60%),linear-gradient(180deg,rgba(11,7,16,.88) 0%,rgba(11,7,16,.60) 38%,rgba(11,7,16,.90) 100%),url('./moco_bg.jpg') center 22%/cover no-repeat}
 .wrap{max-width:780px;margin:0 auto;position:relative;z-index:1}
 .hd{display:flex;align-items:center;gap:14px;margin-bottom:20px;position:relative;min-height:90px;padding-right:184px}
 .hero{position:absolute;right:-6px;top:50%;transform:translateY(-50%);height:132px;width:auto;pointer-events:none;z-index:0;filter:drop-shadow(0 0 20px rgba(255,61,166,.28)) drop-shadow(0 0 5px rgba(0,0,0,.5))}
@@ -216,6 +217,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
 }
 </style>
 
+<div class="bgart"></div>
 <div class="wrap">
   <div class="hd">
     <img class="brandlogo" src="./moco_logo_primary.png" alt="mo.co">
