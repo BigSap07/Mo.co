@@ -65,6 +65,9 @@ body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--m);font-varian
 .panel{display:none}.panel.on{display:block;animation:rise .3s ease}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px}
+.masonry{column-count:2;column-gap:16px}
+.masonry>.card{break-inside:avoid;-webkit-column-break-inside:avoid;width:100%;margin-bottom:16px}
+@media(max-width:600px){.masonry{column-count:1}}
 .h3{font-family:var(--d);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:9px}
 .h3::before{content:"";width:8px;height:8px;border-radius:3px;background:linear-gradient(150deg,var(--cyan),var(--violet));box-shadow:0 0 9px rgba(198,255,58,.5)}
 label{font-family:var(--m);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--dim);display:block;margin-bottom:6px;text-transform:uppercase}
@@ -229,7 +232,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   #p-stats.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-me.on #profile{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-log.on>.card,#p-stats.on>.card,#p-stats.on>.statcol,#p-stats.on>.pulse,#p-me.on #profile>.card{margin-bottom:0}
-  .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide{grid-column:1/-1}
+  .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide,#p-me.on #profile>.masonry{grid-column:1/-1}
   #p-log.on>.howto,#p-log.on>.chlog{margin-bottom:0}
 }
 </style>
@@ -535,16 +538,18 @@ function celebrate(level){
     setTimeout(()=>{try{ac.close()}catch(e){}},1600);
   }catch(e){}
 }
-const TIER_VFX={semi:{n:9,s:[3,6]},charged:{n:16,s:[5,9]},over:{n:26,s:[8,13]},mega:{n:42,s:[12,18]}};
+const TIER_VFX={charged:{n:16,s:[5,9]},over:{n:28,s:[9,14]},mega:{n:48,s:[13,20]}};
 const TIER_ORD={semi:0,charged:1,over:2,mega:3};
 function coreBurst(drops){
-  const parts=[]; let best="semi";
-  drops.forEach(d=>{ const tv=TIER_VFX[d.tier]||TIER_VFX.semi, lvl=TIER_ORD[d.tier]||0; if(lvl>TIER_ORD[best])best=d.tier;
+  const hits=(drops||[]).filter(d=>d&&(d.tier==="charged"||d.tier==="over"||d.tier==="mega"));
+  if(!hits.length) return;
+  const parts=[]; let best="charged";
+  hits.forEach(d=>{ const tv=TIER_VFX[d.tier]||TIER_VFX.charged, lvl=TIER_ORD[d.tier]||1; if(lvl>TIER_ORD[best])best=d.tier;
     const col=CORE_COLOR[d.core]||"#c6ff3a";
     for(let i=0;i<tv.n;i++){ const sp=4+Math.random()*11+lvl*2, ang=-Math.PI/2+(Math.random()-.5)*2.4;
       parts.push({x:innerWidth/2+(Math.random()-.5)*120,y:innerHeight*0.34,vx:Math.cos(ang)*sp*(0.5+Math.random()),vy:Math.sin(ang)*sp-(4+Math.random()*8),g:.32+Math.random()*.2,s:tv.s[0]+Math.random()*(tv.s[1]-tv.s[0]),c:col,r:Math.random()*6.28,vr:(Math.random()-.5)*.45,a:1,sh:lvl>=2}); }
   });
-  if(parts.length>260) parts.length=260;
+  if(parts.length>300) parts.length=300;
   const cv=document.createElement("canvas"); cv.style.cssText="position:fixed;inset:0;pointer-events:none;z-index:9999";
   cv.width=innerWidth; cv.height=innerHeight; document.body.appendChild(cv);
   const x=cv.getContext("2d"); let t0=performance.now();
@@ -555,10 +560,10 @@ function coreBurst(drops){
         x.beginPath(); x.moveTo(0,-p.s); x.lineTo(p.s*.62,0); x.lineTo(0,p.s); x.lineTo(-p.s*.62,0); x.closePath(); x.fill(); x.restore(); } }
     if(alive) requestAnimationFrame(frame); else cv.remove();
   })(t0);
-  try{ const notes={charged:[659.25,987.77],over:[523.25,783.99,1046.5],mega:[523.25,659.25,783.99,1046.5]}[best]; if(!notes)return;
+  try{ const notes={charged:[659.25,987.77],over:[523.25,783.99,1046.5],mega:[523.25,659.25,783.99,1046.5]}[best]; if(!notes)return; const vol={charged:0.05,over:0.075,mega:0.1}[best]||0.06;
     const AC=window.AudioContext||window.webkitAudioContext; if(!AC)return; const ac=new AC(),now=ac.currentTime;
     notes.forEach((f,i)=>{ const o=ac.createOscillator(),gn=ac.createGain(); o.type="triangle"; o.frequency.value=f; const ts=now+i*0.08;
-      gn.gain.setValueAtTime(0,ts); gn.gain.linearRampToValueAtTime(0.07,ts+0.02); gn.gain.exponentialRampToValueAtTime(0.0001,ts+0.45); o.connect(gn).connect(ac.destination); o.start(ts); o.stop(ts+0.5); });
+      gn.gain.setValueAtTime(0,ts); gn.gain.linearRampToValueAtTime(vol,ts+0.02); gn.gain.exponentialRampToValueAtTime(0.0001,ts+0.45); o.connect(gn).connect(ac.destination); o.start(ts); o.stop(ts+0.5); });
     setTimeout(()=>{try{ac.close()}catch(e){}},1500);
   }catch(e){}
 }
@@ -575,9 +580,10 @@ function renderSession(){
   if(!SESS.start || !SESS.kills || now-SESS.last>600000){ el.style.display="none"; if(sessTimer){clearInterval(sessTimer);sessTimer=null;} return; }
   const mins=(SESS.last-SESS.start)/60000, kpm=(SESS.kills>=2&&mins>0)?SESS.kills/mins:null;
   const a=timeAgo(new Date(SESS.last).toISOString()), ago=(a==="now"?"just now":a+" ago");
-  el.style.display="";
-  el.innerHTML=`<b style="color:var(--txt2)">This session</b> · ${SESS.kills} kill${SESS.kills>1?"s":""}`+(kpm!=null?` · <b style="color:var(--cyan)">${kpm.toFixed(1)}</b>/min`:"")+` · last ${ago}`;
+  el.style.display="flex"; el.style.alignItems="center"; el.style.gap="10px";
+  el.innerHTML=`<span><b style="color:var(--txt2)">This session</b> · ${SESS.kills} kill${SESS.kills>1?"s":""}`+(kpm!=null?` · <b style="color:var(--cyan)">${kpm.toFixed(1)}</b>/min`:"")+` · last ${ago}</span><a onclick="endSession()" style="margin-left:auto;cursor:pointer;color:var(--dim);text-decoration:underline;white-space:nowrap">end session</a>`;
 }
+function endSession(){ SESS={start:0,last:0,kills:0}; if(sessTimer){clearInterval(sessTimer);sessTimer=null;} const el=document.getElementById("sessStrip"); if(el) el.style.display="none"; }
 async function renderPulse(){
   const el=document.getElementById("pulse"); if(!el) return;
   const since=new Date(); since.setHours(0,0,0,0);
@@ -959,7 +965,7 @@ async function renderProfile(){
       <div class="kpi"><div class="l">OC · 7 days</div><div class="v" style="color:#c887f7">${rare.wk_over}</div></div>
     </div></div>`;
   const bestCard = topKills.length ? `<div class="card"><div class="h3">Best drops <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· top pulls</span></div><div class="feed">`+topKills.map(k=>{ const kt=KTMAP[k.t]||["?","?","#8492a6"]; return `<div class="fi"><span class="kt" style="background:${kt[2]}22;color:${kt[2]}">${kt[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(k.drops)}</span><span class="ago">${timeAgo(new Date(k.ts).toISOString())}</span></div>`; }).join("")+`</div></div>` : "";
-  wrap.innerHTML = rankCard+badgesCard+kpiCard+tierCard+coresCard+rareCard+bestCard+luckCard+luckTypeCard+recentCard;
+  wrap.innerHTML = rankCard+badgesCard+kpiCard+'<div class="masonry">'+tierCard+coresCard+rareCard+bestCard+luckCard+luckTypeCard+recentCard+'</div>';
   PF={detail:detail, cKills:cKills, commCores:commCores, who:who, ptype:"all"};
   buildPFChips(); paintPType("all");
 }
