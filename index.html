@@ -784,7 +784,7 @@ async function renderLuckBoard(){
 
 async function renderFeed(){
   let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops,created_at&hidden=is.false&order=created_at.desc&limit=25"); }catch(e){ console.error(e); }
-  rows=(rows||[]).slice(0, BOARD_N||12);
+  rows=(rows||[]).slice(0, Math.max(1,(BOARD_N||13)-1));
   document.getElementById("feed").innerHTML = rows.map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     const mega=d.some(x=>x&&x.tier==="mega"), jack=d.length>=4;
