@@ -66,7 +66,7 @@ body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--m);font-varian
 @keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px}
 .masonry{column-count:2;column-gap:16px}
-.masonry>.card{break-inside:avoid;-webkit-column-break-inside:avoid;width:100%;margin-bottom:16px}
+.masonry>.card,.masonry>.statcol{break-inside:avoid;-webkit-column-break-inside:avoid;width:100%;margin-bottom:16px}
 @media(max-width:600px){.masonry{column-count:1}}
 .h3{font-family:var(--d);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:9px}
 .h3::before{content:"";width:8px;height:8px;border-radius:3px;background:linear-gradient(150deg,var(--cyan),var(--violet));box-shadow:0 0 9px rgba(198,255,58,.5)}
@@ -232,7 +232,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
   #p-stats.on{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-me.on #profile{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
   #p-log.on>.card,#p-stats.on>.card,#p-stats.on>.statcol,#p-stats.on>.pulse,#p-me.on #profile>.card{margin-bottom:0}
-  .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide,#p-me.on #profile>.masonry{grid-column:1/-1}
+  .panel.on>.card.wide,#p-stats.on>.pulse,#p-me.on #profile>.card.wide,#p-me.on #profile>.masonry,#p-stats.on>.masonry{grid-column:1/-1}
   #p-log.on>.howto,#p-log.on>.chlog{margin-bottom:0}
 }
 </style>
@@ -311,6 +311,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
       </div>
       <div class="conf" id="conf"></div>
     </div>
+    <div class="masonry">
     <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
     <div class="card"><div class="h3">Drop rate by core</div><div id="cores"></div></div>
     <div class="card"><div class="h3">Top contributors</div><p class="note" style="margin:-4px 0 12px">Luck % = drops per kill vs the community average.</p><div class="board" id="board"></div></div>
@@ -321,6 +322,7 @@ input:focus,select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(198,
       <p class="note" style="margin:-4px 0 10px">Drop rate, avg per kill, or per-tier — click a view. Hover a day for detail.</p>
       <div class="tcrange tcmetric" id="tcMetric" style="margin-bottom:14px"></div>
       <div id="tierchart"><div class="tcempty">Loading…</div></div>
+    </div>
     </div>
     </div>
     <div class="card wide"><div class="h3">Recent kills</div><div class="feed" id="feed"></div></div>
