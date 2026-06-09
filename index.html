@@ -412,7 +412,7 @@ function saveTokens(t){ try{ localStorage.setItem("moco_tokens",JSON.stringify(t
 // ===== Discord auth + handle claim =====
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 let session=null, myClaim=null, VERIFIED=new Set();
-let COMM={kills:0,drops:0}, COMMKT={}, cardData=null, PF=null;
+let COMM={kills:0,drops:0}, COMMKT={}, cardData=null, PF=null, BOARD_N=0;
 function authHeaders(){
   const tok = session ? session.access_token : SUPABASE_KEY;
   return {apikey:SUPABASE_KEY, Authorization:"Bearer "+tok, "Content-Type":"application/json"};
@@ -694,7 +694,7 @@ async function load(){
   await loadVerified();
   try{ const all=await rpc("get_stats",{p_kt:"all"}); COMM={kills:all.kills||0,drops:all.drops||0}; document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
   TC_CACHE={};
-  render(); renderBoard(); renderLuckBoard(); renderFeed(); renderProfile(); renderPulse(); renderTierChart();
+  render(); renderBoard().then(renderFeed); renderLuckBoard(); renderProfile(); renderPulse(); renderTierChart();
 }
 
 async function render(){
@@ -729,6 +729,7 @@ async function render(){
 
 async function renderBoard(){
   let arr=[]; try{ arr=await rpc("get_board",{p_lim:20}); }catch(e){ console.error(e); }
+  BOARD_N=(arr||[]).length;
   const el=document.getElementById("board");
   const commAvg = COMM.kills ? COMM.drops/COMM.kills : 0;
   el.innerHTML = (arr||[]).map((s,i)=>{
@@ -782,8 +783,9 @@ async function renderLuckBoard(){
 }
 
 async function renderFeed(){
-  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops,created_at&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ console.error(e); }
-  document.getElementById("feed").innerHTML = (rows||[]).map(r=>{
+  let rows=[]; try{ rows=await rest("logs?select=handle,difficulty,drops,created_at&hidden=is.false&order=created_at.desc&limit=25"); }catch(e){ console.error(e); }
+  rows=(rows||[]).slice(0, BOARD_N||12);
+  document.getElementById("feed").innerHTML = rows.map(r=>{
     const k=KTMAP[r.difficulty]||["?","?","#8492a6"]; const d=Array.isArray(r.drops)?r.drops:[];
     const mega=d.some(x=>x&&x.tier==="mega"), jack=d.length>=4;
     const fcls=mega?" fl-mega":(jack?" fl-jack":"");
