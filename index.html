@@ -926,7 +926,7 @@ async function renderProfile(){
       <div class="kpi"><div class="l">Longest dry streak</div><div class="v">${st.longest_dry||0}</div></div>
       <div class="kpi"><div class="l">Best multi-drop</div><div class="v c">${st.best_multi||0}</div></div>
     </div>
-    <p class="note" style="margin-top:2px">Luck = your drop rate (${(rate*100).toFixed(1)}%) minus community (${(cRate*100).toFixed(1)}%), in points, across all kill types combined — see the per-type split below. Dry streak = kills in a row with no drop.</p>
+    <p class="note" style="margin-top:2px">Luck = your drop rate (${(rate*100).toFixed(1)}%) minus community (${(cRate*100).toFixed(1)}%), in points, across all kill types combined — see the Luck by kill type breakdown. Dry streak = kills in a row with no drop.</p>
     <p class="note" style="margin-top:6px">Logging pace: <b style="color:var(--cyan)">${paceTxt}</b> — your active logging cadence; breaks and bulk imports excluded.</p>
   </div>`;
 
@@ -969,7 +969,7 @@ async function renderProfile(){
       <div class="kpi"><div class="l">OC · 7 days</div><div class="v" style="color:#c887f7">${rare.wk_over}</div></div>
     </div></div>`;
   const bestCard = topKills.length ? `<div class="card"><div class="h3">Best drops <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· top pulls</span></div><div class="feed">`+topKills.map(k=>{ const kt=KTMAP[k.t]||["?","?","#8492a6"]; return `<div class="fi"><span class="kt" style="background:${kt[2]}22;color:${kt[2]}">${kt[1]}</span><span class="dr" style="margin-left:auto">${dropsHTML(k.drops)}</span><span class="ago">${timeAgo(new Date(k.ts).toISOString())}</span></div>`; }).join("")+`</div></div>` : "";
-  wrap.innerHTML = rankCard+badgesCard+kpiCard+'<div class="masonry">'+tierCard+coresCard+rareCard+bestCard+luckCard+luckTypeCard+recentCard+'</div>';
+  wrap.innerHTML = rankCard+badgesCard+kpiCard+'<div class="masonry">'+tierCard+coresCard+luckCard+luckTypeCard+rareCard+bestCard+recentCard+'</div>';
   PF={detail:detail, cKills:cKills, commCores:commCores, who:who, ptype:"all"};
   buildPFChips(); paintPType("all");
 }
