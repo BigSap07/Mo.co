@@ -68,6 +68,13 @@ body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--m);font-varian
 .masonry{column-count:2;column-gap:16px}
 .masonry>.card,.masonry>.statcol{break-inside:avoid;-webkit-column-break-inside:avoid;width:100%;margin-bottom:16px}
 @media(max-width:600px){.masonry{column-count:1}}
+.mctoast{position:fixed;right:18px;bottom:18px;z-index:10000;display:flex;align-items:center;gap:12px;max-width:330px;background:linear-gradient(180deg,#2a1c08,#16100a);border:1px solid #f5a62366;border-radius:14px;padding:12px 15px;box-shadow:0 12px 36px #000b,0 0 22px #f5a62333;transform:translateX(125%);opacity:0;transition:transform .42s cubic-bezier(.2,.8,.2,1),opacity .42s}
+.mctoast.in{transform:translateX(0);opacity:1}
+.mctoast .mcg{flex:none;display:flex;filter:drop-shadow(0 0 7px #f5a623bb)}
+.mctoast .mcg .gemsvg{width:34px;height:38px}
+.mctoast b{color:#f5a623;letter-spacing:.5px;font-size:11px}
+.mctoast .mtx{font-size:13px;line-height:1.4}
+@media(max-width:600px){.mctoast{right:10px;left:10px;bottom:10px;max-width:none}}
 .h3{font-family:var(--d);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:9px}
 .h3::before{content:"";width:8px;height:8px;border-radius:3px;background:linear-gradient(150deg,var(--cyan),var(--violet));box-shadow:0 0 9px rgba(198,255,58,.5)}
 label{font-family:var(--m);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--dim);display:block;margin-bottom:6px;text-transform:uppercase}
@@ -413,6 +420,7 @@ function saveTokens(t){ try{ localStorage.setItem("moco_tokens",JSON.stringify(t
 const sb = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
 let session=null, myClaim=null, VERIFIED=new Set();
 let COMM={kills:0,drops:0}, COMMKT={}, cardData=null, PF=null, BOARD_N=0;
+let MC_INIT=false, MC_SEEN=new Set(), MC_Q=[], MC_BUSY=false;
 function authHeaders(){
   const tok = session ? session.access_token : SUPABASE_KEY;
   return {apikey:SUPABASE_KEY, Authorization:"Bearer "+tok, "Content-Type":"application/json"};
@@ -586,6 +594,26 @@ function renderSession(){
   el.innerHTML=`<span><b style="color:var(--txt2)">This session</b> · ${SESS.kills} kill${SESS.kills>1?"s":""}`+(kpm!=null?` · <b style="color:var(--cyan)">${kpm.toFixed(1)}</b>/min`:"")+` · last ${ago}</span><a onclick="endSession()" style="margin-left:auto;cursor:pointer;color:var(--dim);text-decoration:underline;white-space:nowrap">end session</a>`;
 }
 function endSession(){ SESS={start:0,last:0,kills:0}; if(sessTimer){clearInterval(sessTimer);sessTimer=null;} const el=document.getElementById("sessStrip"); if(el) el.style.display="none"; }
+async function pollMC(){
+  if(document.hidden) return;
+  let rows=[]; try{ rows=await rest("logs?select=id,handle,drops,created_at&hidden=is.false&order=created_at.desc&limit=12"); }catch(e){ return; }
+  const fresh=[];
+  (rows||[]).forEach(r=>{ const arr=Array.isArray(r.drops)?r.drops:[]; const m=arr.find(x=>x&&x.tier==="mega");
+    if(m && !MC_SEEN.has(r.id)){ MC_SEEN.add(r.id); if(MC_INIT) fresh.push([r.handle,m.core]); } });
+  MC_INIT=true;
+  fresh.reverse().slice(-3).forEach(e=>mcToast(e[0],e[1]));
+  if(MC_SEEN.size>500) MC_SEEN=new Set(Array.from(MC_SEEN).slice(-250));
+}
+function mcToast(h,core){ MC_Q.push([h,core]); if(!MC_BUSY) mcNext(); }
+function mcNext(){
+  if(!MC_Q.length){ MC_BUSY=false; return; } MC_BUSY=true;
+  const [h,core]=MC_Q.shift();
+  const el=document.createElement("div"); el.className="mctoast";
+  el.innerHTML=`<span class="mcg">${coreGem(core,"mega")}</span><span class="mtx"><b>MEGACHARGED!</b><br>${esc(h||"Someone")} just pulled a Mega ${esc(coreLabel(core))}</span>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add("in"));
+  setTimeout(()=>{ el.classList.remove("in"); setTimeout(()=>{ el.remove(); mcNext(); },450); }, 5000);
+}
 async function renderPulse(){
   const el=document.getElementById("pulse"); if(!el) return;
   const since=new Date(); since.setHours(0,0,0,0);
@@ -1078,5 +1106,5 @@ document.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>{
   if(b.dataset.p==="stats") paintTierChart();
 });
 if(CONTACT) document.getElementById("contact").innerHTML=`Questions, feedback, or want your Excel/sheet logs imported? Reach me on Discord: <b style="color:var(--cyan2)">${esc(CONTACT)}</b>`;
-buildChips(); buildLogInputs(); renderLog(); initAuth(); load();
+buildChips(); buildLogInputs(); renderLog(); initAuth(); load(); setTimeout(pollMC,2500); setInterval(pollMC,12000);
 </script>
