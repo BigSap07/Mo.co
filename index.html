@@ -856,13 +856,14 @@ function levelScore(c){
 }
 async function renderProfile(){
   const wrap=document.getElementById("profile");
-  const h=activeProfile();
+  let h=activeProfile();
   const yourH=(document.getElementById("handle").value||"").trim();
   const isSelf = !lookupHandle || lookupHandle.trim().toLowerCase()===yourH.toLowerCase();
   document.getElementById("lookup").value = lookupHandle||"";
   if(!h){ wrap.innerHTML=`<div class="card"><div class="note">Set your handle on the <b>Log kill</b> tab, or search a hunter above.</div></div>`; return; }
   wrap.innerHTML=`<div class="card"><div class="note">Loading ${esc(h)}…</div></div>`;
   let m; try{ m=await rpc("get_player",{h}); }catch(e){ console.error(e); wrap.innerHTML=`<div class="card"><div class="note">Couldn't load that hunter.</div></div>`; return; }
+  if(m && m.handle) h=m.handle;  // adopt canonical case so the raw-row fetches (eq.) match
   if(!m || !m.kills){ wrap.innerHTML=`<div class="card"><div class="note">Nothing logged under "<b>${esc(h)}</b>" yet.</div></div>`; return; }
 
   const back=(lookupHandle && !isSelf) ? `<span class="backlink" onclick="clearLookup()">← your stats</span>` : ``;
