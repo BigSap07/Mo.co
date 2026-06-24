@@ -385,6 +385,7 @@ const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 
 // Add a line at the TOP each time you change something. [label, what changed]
 const CHANGELOG=[
+  ["Jun 13","Click a dojo to rescope the full drop breakdown to it"],
   ["Jun 12","Dojo tracking: tag Normal kills by weapon + Basic/Intermediate/Expert"],
   ["Jun 12","Badges: retired the RNG-only badges (luck + dry streak), added 50/100 OC tiers"],
   ["Jun 12","Live session now tallies your Semi/Charged/OC/MC cores + XP gained"],
@@ -437,7 +438,7 @@ const BOSS_NICK={"techno_fists:intermediate":"Big Papa"};
 const dslug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
 function dojoSlug(w,t){ return dslug(w)+":"+String(t).toLowerCase(); }
 function dojoLabel(slug){ if(!slug)return""; const p=String(slug).split(":"),wn=WEAPONS.find(x=>dslug(x)===p[0])||p[0],tn=(p[1]||"").replace(/^./,c=>c.toUpperCase()),nk=BOSS_NICK[slug]; return wn+" \u00b7 "+tn+(nk?" ("+nk+")":""); }
-let logKT="normal", viewKT="all", lookupHandle=null;
+let logKT="normal", viewKT="all", viewBoss=null, lookupHandle=null;
 let logDojoW=(localStorage.getItem("moco_dojo_w")||"Techno Fists"), logDojoT=(localStorage.getItem("moco_dojo_t")||"Intermediate");
 let SESS={start:0,last:0,kills:0,tiers:{semi:0,charged:0,over:0,mega:0}}, sessTimer=null;
 let armedCore=null, dropList=[];
@@ -550,7 +551,7 @@ function buildChips(){
       dt.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ logDojoT=c.dataset.kt; try{localStorage.setItem("moco_dojo_t",logDojoT);}catch(e){} buildChips(); });
     }
   }
-  document.querySelectorAll("#filtChips .chip").forEach(c=>c.onclick=()=>{viewKT=c.dataset.kt;buildChips();render();});
+  document.querySelectorAll("#filtChips .chip").forEach(c=>c.onclick=()=>{viewKT=c.dataset.kt;viewBoss=null;buildChips();render();});
 }
 const TSHORT={semi:"S",charged:"C",over:"OC",mega:"MC"};
 const TCOLOR=Object.fromEntries(TIERS.map(t=>[t[0],t[2]]));
@@ -799,9 +800,11 @@ async function load(){
 }
 
 async function render(){
-  let s; try{ s=await rpc("get_stats",{p_kt:viewKT}); }catch(e){ console.error(e); return; }
+  let s; try{ s=await rpc("get_stats",{p_kt:viewKT,p_boss:viewBoss}); }catch(e){ console.error(e); return; }
   const tk=s.kills||0, td=s.drops||0, wd=s.with_drops||0, tiers=s.tiers||{}, cores=s.cores||{};
-  document.getElementById("cmpNote").textContent = viewKT==="all"
+  const _cmp=document.getElementById("cmpNote");
+  if(viewBoss){ _cmp.innerHTML=`Showing only <b style="color:var(--cyan)">${esc(dojoLabel(viewBoss))}</b> (Normal dojo) \u2014 <a onclick="clearDojo()" style="cursor:pointer;color:var(--dim);text-decoration:underline">\u2715 clear</a>`; }
+  else _cmp.textContent = viewKT==="all"
     ? "Showing ALL kill types pooled — these rates are NOT meaningful (a megacharged kill drops far more than a normal one). Pick a single type for real numbers."
     : `Rates below are for ${KTMAP[viewKT][1]} kills only — the only way they stay comparable.`;
   document.getElementById("kK").textContent=tk.toLocaleString();
@@ -885,6 +888,8 @@ async function renderLuckBoard(){
   el.onclick=(ev)=>{ const t=ev.target.closest(".nm[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
 }
 
+function clearDojo(){ viewBoss=null; buildChips(); render(); renderDojos(); }
+
 async function renderDojos(){
   const el=document.getElementById("dojos"); if(!el) return;
   let rows=null; try{ rows=await rpc("get_dojo_stats",{}); }catch(e){ console.error(e); }
@@ -897,15 +902,18 @@ async function renderDojos(){
   if(!dojos.length){ el.innerHTML=`<div class="note">No dojo-tagged kills yet \u2014 they\u2019ll appear here as people log them.</div>`+legacyHTML; return; }
   el.innerHTML = dojos.map((r,i)=>{
     const rate=r.kills?(100*r.with_drops/r.kills):0;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
-      <span style="color:var(--dim2);font-size:12px;width:16px;text-align:right">${i+1}</span>
-      <span style="flex:1;font-family:var(--d);font-weight:600">${esc(dojoLabel(r.boss))}</span>
-      <span style="color:var(--cyan);font-weight:700;min-width:52px;text-align:right">${rate.toFixed(1)}%</span>
-      ${pill(r.with_drops,r.kills)}
-      <span class="sub" style="min-width:54px;text-align:right">${r.kills} kills</span>
-    </div>
-    <div class="sub" style="margin:-3px 0 2px 26px;opacity:.85">${mix(r)}</div>`;
+    return `<div data-boss="${esc(r.boss)}" title="Click for this dojo\u2019s full breakdown" style="cursor:pointer;border-radius:8px${r.boss===viewBoss?";background:var(--card2)":""}">
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-bottom:1px solid var(--line)">
+        <span style="color:var(--dim2);font-size:12px;width:16px;text-align:right">${i+1}</span>
+        <span style="flex:1;font-family:var(--d);font-weight:600">${esc(dojoLabel(r.boss))}</span>
+        <span style="color:var(--cyan);font-weight:700;min-width:52px;text-align:right">${rate.toFixed(1)}%</span>
+        ${pill(r.with_drops,r.kills)}
+        <span class="sub" style="min-width:54px;text-align:right">${r.kills} kills</span>
+      </div>
+      <div class="sub" style="margin:-3px 0 2px 34px;padding-bottom:4px;opacity:.85">${mix(r)}</div>
+    </div>`;
   }).join("") + legacyHTML;
+  el.onclick=(ev)=>{ const row=ev.target.closest("[data-boss]"); if(row&&row.dataset.boss){ viewBoss=row.dataset.boss; viewKT="normal"; buildChips(); render(); renderDojos(); const f=document.getElementById("filtChips"); if(f) f.scrollIntoView({behavior:"smooth",block:"center"}); } };
 }
 
 async function renderFeed(){
