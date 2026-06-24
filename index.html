@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>mo.co Drop Tracker — Community Upgrade Core Drop Rates</title>
+<title>mo.co Drop Tracker - Community Upgrade Core Drop Rates</title>
 <meta name="description" content="Crowdsourced, community-pooled upgrade-core drop rates for mo.co. Log your kills across every boss, track tier odds (Semi to Megacharged), and compare your luck against the community.">
 <meta name="theme-color" content="#0b0710">
 <link rel="icon" href="./favicon.ico" sizes="any">
@@ -322,6 +322,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 
         <div class="kpi"><div class="l">Drop rate</div><div class="v c" id="kR">—</div></div>
       </div>
       <div class="conf" id="conf"></div>
+    </div>
+    <div class="card wide">
+      <div class="h3">Drop rate by dojo <span style="color:var(--dim2);font-weight:400;letter-spacing:0;text-transform:none;font-size:11px">· Normal bosses</span></div>
+      <p class="note" style="margin:-4px 0 12px">Each weapon\u2019s dojo, ranked by drop rate. The pill shows confidence \u2014 green solid, amber thin, red too early to trust.</p>
+      <div id="dojos"></div>
     </div>
     <div class="masonry">
     <div class="card"><div class="h3">Core tier breakdown</div><div id="tiers"></div></div>
@@ -790,7 +795,7 @@ async function load(){
   await loadVerified();
   try{ const all=await rpc("get_stats",{p_kt:"all"}); COMM={kills:all.kills||0,drops:all.drops||0}; document.getElementById("liveN").textContent=(all.kills||0).toLocaleString(); }catch(e){ console.error(e); }
   TC_CACHE={};
-  render(); renderBoard().then(renderFeed); renderLuckBoard(); renderProfile(); renderPulse(); renderTierChart();
+  render(); renderBoard().then(renderFeed); renderLuckBoard(); renderProfile(); renderPulse(); renderTierChart(); renderDojos();
 }
 
 async function render(){
@@ -878,6 +883,29 @@ async function renderLuckBoard(){
     <div><div class="hoft" style="color:#ff6b47">💀 Unluckiest</div>${U.map((s,i)=>row(s,i,true)).join("")||'<div class="note">Not enough hunters yet.</div>'}</div>
   </div>`;
   el.onclick=(ev)=>{ const t=ev.target.closest(".nm[data-h]"); if(t&&t.dataset.h) viewPlayer(t.dataset.h); };
+}
+
+async function renderDojos(){
+  const el=document.getElementById("dojos"); if(!el) return;
+  let rows=null; try{ rows=await rpc("get_dojo_stats",{}); }catch(e){ console.error(e); }
+  if(!rows){ el.innerHTML=`<div class="note">Couldn\u2019t load dojo stats.</div>`; return; }
+  const legacy=rows.find(r=>r.boss==="__legacy__");
+  const dojos=rows.filter(r=>r.boss!=="__legacy__");
+  const pill=(wd,k)=>{ const w=wilson(wd,k); const span=w[1]-w[0]; let c,t; if(k<30){c="#ff5d5d";t="too early";} else if(span>0.12){c="#f5a623";t="thin";} else {c="#2fd07a";t="solid";} return `<span style="font-size:10px;padding:2px 7px;border-radius:6px;background:${c}22;color:${c};border:1px solid ${c}55;white-space:nowrap">${t}</span>`; };
+  const mix=(r)=>{ const t=(c,lab,n)=>n?`<span style="color:var(--${c})">${n} ${lab}</span>`:""; const a=[t("semi","semi",r.semi),t("charged","charged",r.charged),t("over","OC",r.over),t("mega","MC",r.mega)].filter(Boolean); return a.join(" \u00b7 ")||"no drops yet"; };
+  const legacyHTML = legacy ? `<div class="note" style="margin-top:13px;opacity:.75">Pre-dojo (mixed): ${legacy.kills} kills \u00b7 ${legacy.kills?(100*legacy.with_drops/legacy.kills).toFixed(1):0}% drop rate \u2014 logged before dojo tracking, can\u2019t be split by boss.</div>` : "";
+  if(!dojos.length){ el.innerHTML=`<div class="note">No dojo-tagged kills yet \u2014 they\u2019ll appear here as people log them.</div>`+legacyHTML; return; }
+  el.innerHTML = dojos.map((r,i)=>{
+    const rate=r.kills?(100*r.with_drops/r.kills):0;
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)">
+      <span style="color:var(--dim2);font-size:12px;width:16px;text-align:right">${i+1}</span>
+      <span style="flex:1;font-family:var(--d);font-weight:600">${esc(dojoLabel(r.boss))}</span>
+      <span style="color:var(--cyan);font-weight:700;min-width:52px;text-align:right">${rate.toFixed(1)}%</span>
+      ${pill(r.with_drops,r.kills)}
+      <span class="sub" style="min-width:54px;text-align:right">${r.kills} kills</span>
+    </div>
+    <div class="sub" style="margin:-3px 0 2px 26px;opacity:.85">${mix(r)}</div>`;
+  }).join("") + legacyHTML;
 }
 
 async function renderFeed(){
