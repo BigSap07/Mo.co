@@ -270,6 +270,11 @@ input:focus,select:focus,textarea:focus{border-color:var(--cyan);box-shadow:0 0 
       <input id="handle" placeholder="e.g. bigsap" maxlength="24" style="margin-bottom:14px">
       <label>Kill type (the boss)</label>
       <div class="chips" id="ktChips"></div>
+      <div id="dojoWrap" style="display:none;margin-top:13px">
+        <label>Dojo</label>
+        <select id="dojoWeapon" style="margin-bottom:9px"></select>
+        <div class="chips" id="dojoTiers"></div>
+      </div>
       <p class="note callout" style="margin-top:12px"><b>Bosses only.</b> Log <b>boss</b> drops — not normal monsters, and not overcharged / megacharged / chaos <b>mini-mobs</b>. The kill type above describes the boss itself, not regular elites.</p>
     </div>
     <div class="card">
@@ -375,6 +380,7 @@ const CONTACT = "Bigsap"; // optional: your Discord, shown in the footer
 
 // Add a line at the TOP each time you change something. [label, what changed]
 const CHANGELOG=[
+  ["Jun 12","Dojo tracking: tag Normal kills by weapon + Basic/Intermediate/Expert"],
   ["Jun 12","Badges: retired the RNG-only badges (luck + dry streak), added 50/100 OC tiers"],
   ["Jun 12","Live session now tallies your Semi/Charged/OC/MC cores + XP gained"],
   ["Jun 12","Hall of Fame now ranks luck vs. expected for your kills"],
@@ -420,7 +426,14 @@ const LOGO_SRC="./moco_logo_primary.png";
 const BG_SRC="./moco_bg.jpg"; const BIGPAPA_SRC="./bigpapa.png";
 function loadImg(src){return new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=src;});}
 
+const WEAPONS=["Headbanger","Zapsicle","Speedshot","Techno Fists","Vibe Shifter","Venom Bow","Lavashield","Wolf Stick","Squid Blades","Singularity"];
+const DOJO_TIERS=[["Basic","Basic","#4b8cf5"],["Intermediate","Intermediate","#f5a623"],["Expert","Expert","#ff5d5d"]];
+const BOSS_NICK={"techno_fists:intermediate":"Big Papa"};
+const dslug=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,"");
+function dojoSlug(w,t){ return dslug(w)+":"+String(t).toLowerCase(); }
+function dojoLabel(slug){ if(!slug)return""; const p=String(slug).split(":"),wn=WEAPONS.find(x=>dslug(x)===p[0])||p[0],tn=(p[1]||"").replace(/^./,c=>c.toUpperCase()),nk=BOSS_NICK[slug]; return wn+" \u00b7 "+tn+(nk?" ("+nk+")":""); }
 let logKT="normal", viewKT="all", lookupHandle=null;
+let logDojoW=(localStorage.getItem("moco_dojo_w")||"Techno Fists"), logDojoT=(localStorage.getItem("moco_dojo_t")||"Intermediate");
 let SESS={start:0,last:0,kills:0,tiers:{semi:0,charged:0,over:0,mega:0}}, sessTimer=null;
 let armedCore=null, dropList=[];
 const H={apikey:SUPABASE_KEY,Authorization:"Bearer "+SUPABASE_KEY,"Content-Type":"application/json"};
@@ -517,6 +530,21 @@ function buildChips(){
   document.getElementById("ktChips").innerHTML=KT.map(k=>chipHTML(k,logKT)).join("");
   document.getElementById("filtChips").innerHTML=chipHTML(["all","All types","#c6ff3a"],viewKT)+KT.map(k=>chipHTML(k,viewKT)).join("");
   document.querySelectorAll("#ktChips .chip").forEach(c=>c.onclick=()=>{logKT=c.dataset.kt;buildChips();});
+  const dw=document.getElementById("dojoWrap");
+  if(dw){
+    dw.style.display=(logKT==="normal")?"block":"none";
+    const wsel=document.getElementById("dojoWeapon");
+    if(wsel){
+      if(wsel.options.length===0) wsel.innerHTML=WEAPONS.map(w=>`<option>${w}</option>`).join("");
+      wsel.value=logDojoW;
+      wsel.onchange=()=>{ logDojoW=wsel.value; try{localStorage.setItem("moco_dojo_w",logDojoW);}catch(e){} };
+    }
+    const dt=document.getElementById("dojoTiers");
+    if(dt){
+      dt.innerHTML=DOJO_TIERS.map(k=>chipHTML(k,logDojoT)).join("");
+      dt.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{ logDojoT=c.dataset.kt; try{localStorage.setItem("moco_dojo_t",logDojoT);}catch(e){} buildChips(); });
+    }
+  }
   document.querySelectorAll("#filtChips .chip").forEach(c=>c.onclick=()=>{viewKT=c.dataset.kt;buildChips();render();});
 }
 const TSHORT={semi:"S",charged:"C",over:"OC",mega:"MC"};
@@ -674,7 +702,7 @@ async function logKill(noDrop){
   const token=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():(Date.now()+"-"+Math.random());
   try{
     const r=await fetch(SUPABASE_URL+"/rest/v1/logs?select=id",{method:"POST",headers:{...authHeaders(),Prefer:"return=representation"},
-      body:JSON.stringify({handle:handle||null,difficulty:logKT,drops,token})});
+      body:JSON.stringify({handle:handle||null,difficulty:logKT,drops,token,boss:(logKT==="normal"?dojoSlug(logDojoW,logDojoT):null)})});
     if(!r.ok) throw new Error(await r.text());
     const row=await r.json(); const id=Array.isArray(row)&&row[0]?row[0].id:null;
     if(id!=null){ const t=tokens(); t[id]=token; saveTokens(t); }
